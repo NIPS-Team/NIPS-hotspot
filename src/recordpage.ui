@@ -1,0 +1,604 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>RecordPage</class>
+ <widget class="QWidget" name="RecordPage">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1120</width>
+    <height>967</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_14">
+   <item>
+    <layout class="QHBoxLayout" name="recordTypeLayout">
+     <item>
+      <widget class="QComboBox" name="recordTypeComboBox">
+       <property name="toolTip">
+        <string>Select recording type</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="recordTypeLayoutHorizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="homeButton">
+       <property name="toolTip">
+        <string>Go to start screen</string>
+       </property>
+       <property name="text">
+        <string>Home</string>
+       </property>
+       <property name="icon">
+        <iconset theme="go-home">
+         <normaloff>.</normaloff>.</iconset>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="launchAppBox">
+     <property name="title">
+      <string>Launch Application</string>
+     </property>
+     <layout class="QFormLayout" name="formLayout_1">
+      <property name="fieldGrowthPolicy">
+       <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+      </property>
+      <item row="0" column="0">
+       <widget class="QLabel" name="applicationLabel">
+        <property name="toolTip">
+         <string>Path to the application to be recorded</string>
+        </property>
+        <property name="text">
+         <string>App&amp;lication:</string>
+        </property>
+        <property name="buddy">
+         <cstring>applicationName</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="KUrlComboRequester" name="applicationName" native="true">
+        <property name="toolTip">
+         <string>Path to the application to be recorded</string>
+        </property>
+        <property name="text" stdset="0">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="applicationParamsLabel">
+        <property name="toolTip">
+         <string>Optional parameters to pass to the application being recorded</string>
+        </property>
+        <property name="text">
+         <string>Parame&amp;ters:</string>
+        </property>
+        <property name="buddy">
+         <cstring>applicationParametersBox</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLineEdit" name="applicationParametersBox">
+        <property name="contextMenuPolicy">
+         <enum>Qt::NoContextMenu</enum>
+        </property>
+        <property name="toolTip">
+         <string>Optional parameters to pass to the application being recorded</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="workingDirectoryLabel">
+        <property name="toolTip">
+         <string>Directory to store the perf data file while recording</string>
+        </property>
+        <property name="text">
+         <string>Wor&amp;king Directory:</string>
+        </property>
+        <property name="buddy">
+         <cstring>workingDirectory</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="KUrlRequester" name="workingDirectory" native="true">
+        <property name="toolTip">
+         <string>Directory to store the perf data file while recording</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="attachAppBox">
+     <property name="title">
+      <string>Attach To Application</string>
+     </property>
+     <layout class="QFormLayout" name="formLayout_2">
+      <property name="fieldGrowthPolicy">
+       <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+      </property>
+      <item row="0" column="0">
+       <widget class="QLabel" name="processesFilterLabel">
+        <property name="toolTip">
+         <string>Filter the process list by process name or process ID</string>
+        </property>
+        <property name="text">
+         <string>Process Filter:</string>
+        </property>
+        <property name="buddy">
+         <cstring>processesFilterBox</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="KFilterProxySearchLine" name="processesFilterBox" native="true">
+        <property name="toolTip">
+         <string>Filter the process list by process name or process ID</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="processesLabel">
+        <property name="toolTip">
+         <string>List of processes. Select at least one to attach to.</string>
+        </property>
+        <property name="text">
+         <string>Processes:</string>
+        </property>
+        <property name="buddy">
+         <cstring>processesTableView</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QTreeView" name="processesTableView">
+        <property name="toolTip">
+         <string>List of processes. Select at least one to attach to.</string>
+        </property>
+        <property name="alternatingRowColors">
+         <bool>true</bool>
+        </property>
+        <property name="rootIsDecorated">
+         <bool>false</bool>
+        </property>
+        <property name="uniformRowHeights">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="perfOptionsBox">
+     <property name="title">
+      <string>Perf Options</string>
+     </property>
+     <layout class="QFormLayout" name="formLayout">
+      <property name="fieldGrowthPolicy">
+       <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+      </property>
+      <item row="0" column="0">
+       <widget class="QLabel" name="eventTypeLabel">
+        <property name="toolTip">
+         <string>Optional perf event type flags to use while recording perf data</string>
+        </property>
+        <property name="text">
+         <string>Event &amp;Type(s):</string>
+        </property>
+        <property name="buddy">
+         <cstring>eventTypeBox</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QComboBox" name="eventTypeBox">
+        <property name="toolTip">
+         <string>Optional perf event type flags to use while recording perf data</string>
+        </property>
+        <property name="editable">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="elevatePrivilegesLabel">
+        <property name="toolTip">
+         <string>When enabled, hotspot will temporarily elevate the perf privileges via kdesudo or kdesu. This allows you to access advanced perf features such as kernel tracepoints required for Off-CPU profiling.</string>
+        </property>
+        <property name="text">
+         <string>Elevate Privileges:</string>
+        </property>
+        <property name="buddy">
+         <cstring>elevatePrivilegesCheckBox</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QCheckBox" name="elevatePrivilegesCheckBox">
+        <property name="toolTip">
+         <string>When enabled, hotspot will temporarily elevate the perf privileges via kdesudo or kdesu. This allows you to access advanced perf features such as kernel tracepoints required for Off-CPU profiling.</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="offCpuLabel">
+        <property name="toolTip">
+         <string>Record scheduler switch events. This enables off-CPU profiling to measure sleep times etc. This requires elevated privileges.</string>
+        </property>
+        <property name="text">
+         <string>Off-CPU Profilin&amp;g:</string>
+        </property>
+        <property name="buddy">
+         <cstring>offCpuCheckBox</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QCheckBox" name="offCpuCheckBox">
+        <property name="toolTip">
+         <string>Record scheduler switch events. This enables off-CPU profiling to measure sleep times etc. This requires elevated privileges.</string>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0" colspan="2">
+       <widget class="KCollapsibleGroupBox" name="perfOptionsBox2" native="true">
+        <property name="title" stdset="0">
+         <string>Advanced</string>
+        </property>
+        <layout class="QFormLayout" name="formLayout_3">
+         <property name="fieldGrowthPolicy">
+          <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+         </property>
+         <item row="0" column="0">
+          <widget class="QLabel" name="outputFileLabel">
+           <property name="toolTip">
+            <string>Path to the file location, where perf will write its output to</string>
+           </property>
+           <property name="text">
+            <string>O&amp;utput File:</string>
+           </property>
+           <property name="buddy">
+            <cstring>outputFile</cstring>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="KUrlRequester" name="outputFile" native="true">
+           <property name="toolTip">
+            <string>Path to the file location, where perf will write its output to</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="unwindingMethodLabel">
+           <property name="toolTip">
+            <string>Preferred unwinding method to use while recording perf data</string>
+           </property>
+           <property name="text">
+            <string>&amp;Unwinding Method:</string>
+           </property>
+           <property name="buddy">
+            <cstring>callGraphComboBox</cstring>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QComboBox" name="callGraphComboBox">
+           <property name="toolTip">
+            <string>Preferred unwinding method to use while recording perf data</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="sampleCpuLabel">
+           <property name="toolTip">
+            <string>Record the CPU where an event occurred. This enables the per-CPU event timeline. When this setting is disabled, all events will appear to be associated with CPU #0.</string>
+           </property>
+           <property name="text">
+            <string>Per-CPU Events:</string>
+           </property>
+           <property name="buddy">
+            <cstring>sampleCpuCheckBox</cstring>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QCheckBox" name="sampleCpuCheckBox">
+           <property name="toolTip">
+            <string>Record the CPU where an event occurred. This enables the per-CPU event timeline. When this setting is disabled, all events will appear to be associated with CPU #0.</string>
+           </property>
+           <property name="text">
+            <string/>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="0">
+          <widget class="QLabel" name="bufferSizeLabel">
+           <property name="toolTip">
+            <string>Set the event buffer size. Increase this value when events are lost during recording. When a byte units is selected, the size is rounded up to have nearest pages power of two value. The number of data pages gets rounded up to the nearest power of two.</string>
+           </property>
+           <property name="text">
+            <string>Buffer Si&amp;ze:</string>
+           </property>
+           <property name="buddy">
+            <cstring>mmapPagesSpinBox</cstring>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="1">
+          <widget class="QWidget" name="mmapPagesContainer" native="true">
+           <layout class="QHBoxLayout" name="horizontalLayout_2">
+            <property name="leftMargin">
+             <number>0</number>
+            </property>
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <property name="rightMargin">
+             <number>0</number>
+            </property>
+            <property name="bottomMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <widget class="QSpinBox" name="mmapPagesSpinBox">
+              <property name="toolTip">
+               <string>Set the event buffer size. Increase this value when events are lost during recording. When a byte units is selected, the size is rounded up to have nearest pages power of two value. The number of data pages gets rounded up to the nearest power of two.</string>
+              </property>
+              <property name="specialValueText">
+               <string>automatic</string>
+              </property>
+              <property name="maximum">
+               <number>999</number>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="mmapPagesUnitComboBox">
+              <property name="toolTip">
+               <string>Select the unit of buffer size. When a byte units is selected, the size is rounded up to have nearest pages power of two value. The number of data pages gets rounded up to the nearest power of two.</string>
+              </property>
+              <property name="currentIndex">
+               <number>2</number>
+              </property>
+              <item>
+               <property name="text">
+                <string>B</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>KB</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>MB</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>GB</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Pages</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+            <item>
+             <spacer name="horizontalSpacer">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item row="5" column="0">
+          <widget class="QLabel" name="perfParamsLabel">
+           <property name="toolTip">
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Free-form entry field for custom perf parameters. Use this field to set advanced options (cf. &lt;tt&gt;man perf record&lt;/tt&gt;).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           </property>
+           <property name="text">
+            <string>Advanced Options:</string>
+           </property>
+           <property name="buddy">
+            <cstring>perfParams</cstring>
+           </property>
+          </widget>
+         </item>
+         <item row="5" column="1">
+          <widget class="QComboBox" name="perfParams">
+           <property name="toolTip">
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Free-form entry field for custom perf parameters. Use this field to set advanced options (cf. &lt;tt&gt;man perf record&lt;/tt&gt;).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           </property>
+           <property name="editable">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="0">
+          <widget class="QLabel" name="useAioLabel">
+           <property name="toolTip">
+            <string>&lt;qt&gt;Use asynchronous (Posix AIO) trace writing mode. Asynchronous mode is supported only when linking Perf tool with libc library providing implementation for Posix AIO API.&lt;/qt&gt;</string>
+           </property>
+           <property name="text">
+            <string>Use AIO:</string>
+           </property>
+           <property name="buddy">
+            <cstring>useAioCheckBox</cstring>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="1">
+          <widget class="QCheckBox" name="useAioCheckBox">
+           <property name="toolTip">
+            <string>&lt;qt&gt;Use asynchronous (Posix AIO) trace writing mode. Asynchronous mode is supported only when linking Perf tool with libc library providing implementation for Posix AIO API.&lt;/qt&gt;</string>
+           </property>
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="KMessageWidget" name="applicationRecordErrorMessage"/>
+   </item>
+   <item>
+    <widget class="QWidget" name="widget" native="true">
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <widget class="QPushButton" name="startRecordingButton">
+        <property name="toolTip">
+         <string>Start recording perf data</string>
+        </property>
+        <property name="text">
+         <string>Start Recording</string>
+        </property>
+        <property name="icon">
+         <iconset theme="media-playback-start">
+          <normaloff>.</normaloff>.</iconset>
+        </property>
+        <property name="checkable">
+         <bool>true</bool>
+        </property>
+        <property name="autoDefault">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="viewPerfRecordResultsButton">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="toolTip">
+         <string>View the perf record results</string>
+        </property>
+        <property name="text">
+         <string>View Results</string>
+        </property>
+        <property name="icon">
+         <iconset theme="view-list-symbolic">
+          <normaloff>.</normaloff>.</iconset>
+        </property>
+        <property name="autoDefault">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="recordOutputBox">
+     <property name="title">
+      <string>Record Output</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout">
+      <item>
+       <widget class="QTextEdit" name="perfResultsTextEdit">
+        <property name="font">
+         <font>
+          <family>Monospace</family>
+         </font>
+        </property>
+        <property name="toolTip">
+         <string>Detailed output from the perf record operation.</string>
+        </property>
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+        <property name="placeholderText">
+         <string>Waiting for recording to start...</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="perfInputEdit">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="placeholderText">
+         <string>send input to process...</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>KFilterProxySearchLine</class>
+   <extends>QWidget</extends>
+   <header>kfilterproxysearchline.h</header>
+  </customwidget>
+  <customwidget>
+   <class>KMessageWidget</class>
+   <extends>QFrame</extends>
+   <header>kmessagewidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>KCollapsibleGroupBox</class>
+   <extends>QWidget</extends>
+   <header>kcollapsiblegroupbox.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>KUrlRequester</class>
+   <extends>QWidget</extends>
+   <header>kurlrequester.h</header>
+  </customwidget>
+  <customwidget>
+   <class>KUrlComboRequester</class>
+   <extends>KUrlRequester</extends>
+   <header>kurlrequester.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

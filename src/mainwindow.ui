@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1123</width>
+    <height>769</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <widget class="QWidget" name="centralWidget"/>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1123</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="helpMenu">
+    <property name="title">
+     <string>&amp;Help</string>
+    </property>
+    <addaction name="actionAbout_Hotspot"/>
+    <addaction name="actionAbout_KDAB"/>
+    <addaction name="actionAbout_Qt"/>
+    <addaction name="separator"/>
+   </widget>
+   <widget class="QMenu" name="fileMenu">
+    <property name="title">
+     <string>&amp;File</string>
+    </property>
+   </widget>
+   <widget class="QMenu" name="settingsMenu">
+    <property name="title">
+     <string>Setti&amp;ngs</string>
+    </property>
+    <addaction name="actionPathsAndArchSettingsWindow"/>
+   </widget>
+   <widget class="QMenu" name="viewMenu">
+    <property name="title">
+     <string>&amp;View</string>
+    </property>
+    <property name="toolTipsVisible">
+     <bool>true</bool>
+    </property>
+   </widget>
+   <addaction name="fileMenu"/>
+   <addaction name="settingsMenu"/>
+   <addaction name="viewMenu"/>
+   <addaction name="helpMenu"/>
+  </widget>
+  <action name="actionAbout_Hotspot">
+   <property name="icon">
+    <iconset theme="hotspot" resource="resources.qrc">
+     <normaloff>:/images/icons/128-apps-hotspot.png</normaloff>:/images/icons/128-apps-hotspot.png</iconset>
+   </property>
+   <property name="text">
+    <string>About &amp;Hotspot</string>
+   </property>
+  </action>
+  <action name="actionAbout_KDAB">
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/images/kdablogo.png</normaloff>:/images/kdablogo.png</iconset>
+   </property>
+   <property name="text">
+    <string>About &amp;KDAB</string>
+   </property>
+  </action>
+  <action name="actionAbout_Qt">
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/images/qtlogo.png</normaloff>:/images/qtlogo.png</iconset>
+   </property>
+   <property name="text">
+    <string>About &amp;Qt</string>
+   </property>
+  </action>
+  <action name="actionPathsAndArchSettingsWindow">
+   <property name="text">
+    <string>Paths and Architecture Settings</string>
+   </property>
+  </action>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+ <resources>
+  <include location="resources.qrc"/>
+ </resources>
+ <connections/>
+</ui>

@@ -1,0 +1,7 @@
+build*/
+/.project
+/CMakeLists.txt.user
+.kdev4
+elfutils.build.tar.bz2
+/.idea
+/cmake-build-debug
