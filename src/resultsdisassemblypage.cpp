@@ -182,7 +182,7 @@ void ResultsDisassemblyPage::showAnnotate() {
     QProcess asmProcess;
 
     QString bareSymbol = m_curSymbol.symbol.split(QLatin1Char('('))[0];
-    QString processName = QLatin1String("perf annotate --asm-raw --no-source ") + bareSymbol +
+    QString processName = QLatin1String("perf annotate -f --asm-raw --no-source ") + bareSymbol +
                           QLatin1String(" -i ") + m_perfDataPath;
 
     if (m_tmpFile.open()) {
@@ -250,11 +250,11 @@ void ResultsDisassemblyPage::setData(const Data::Symbol &symbol) {
         return;
     }
     // If binary is not found at the specified path, use current binary file located at the application path
-    if (!QFile::exists(m_curSymbol.path)) {
+    if (!QFile::exists(m_curSymbol.path) || m_arch.startsWith(QLatin1String("arm"))) {
         m_curSymbol.path = m_appPath + QDir::separator() + m_curSymbol.binary;
     }
     // If binary is still not found, trying to find it in extraLibPaths
-    if (!QFile::exists(m_curSymbol.path)) {
+    if (!QFile::exists(m_curSymbol.path) || m_arch.startsWith(QLatin1String("arm"))) {
         QStringList dirs = m_extraLibPaths.split(QLatin1String(":"));
         foreach (QString dir, dirs) {
             QDirIterator it(dir, QDir::Dirs, QDirIterator::Subdirectories);
