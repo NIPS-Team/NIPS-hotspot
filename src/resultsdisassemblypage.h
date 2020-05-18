@@ -34,11 +34,11 @@
 class QMenu;
 
 namespace Ui {
-class ResultsDisassemblyPage;
+    class ResultsDisassemblyPage;
 }
 
 namespace Data {
-struct Symbol;
+    struct Symbol;
 }
 
 class QTreeView;
@@ -46,24 +46,30 @@ class QTreeView;
 class PerfParser;
 class FilterAndZoomStack;
 
-class ResultsDisassemblyPage : public QWidget
-{
-    Q_OBJECT
+class ResultsDisassemblyPage : public QWidget {
+Q_OBJECT
+    Q_ENUMS(Action)
 public:
-    explicit ResultsDisassemblyPage(FilterAndZoomStack* filterStack, PerfParser* parser,
-                                 QWidget* parent = nullptr);
+    enum Action {
+        Disassembly,
+        Annotate
+    };
+
+    explicit ResultsDisassemblyPage(FilterAndZoomStack *filterStack, PerfParser *parser,
+                                    QWidget *parent = nullptr);
     ~ResultsDisassemblyPage();
 
     void clear();
+    QByteArray processDisassemblyGenRun(QString processName);
     void showDisassembly();
     void showDisassemblyBySymbol();
     void showDisassemblyByAddressRange();
     // Output Disassembly that is the result of call process running 'processName' command on tab Disassembly
     void showDisassembly(QString processName);
     void showAnnotate();
-    void setAppPath(const QString& path);
-    void setData(const Data::Symbol& data);
-    void setData(const Data::DisassemblyResult& data);
+    void setAppPath(const QString &path);
+    void setData(const Data::Symbol &data);
+    void setData(const Data::DisassemblyResult &data);
 
 private:
     QScopedPointer<Ui::ResultsDisassemblyPage> ui;
@@ -81,4 +87,6 @@ private:
     QString m_disasmApproach;
     // Objdump binary name
     QString m_objdump;
+    // Disassembly action: Disassembly or Annotate
+    Action m_action;
 };

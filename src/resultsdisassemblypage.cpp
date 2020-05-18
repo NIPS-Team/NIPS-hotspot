@@ -34,6 +34,7 @@
 #include <QTextStream>
 #include <QMessageBox>
 #include <QString>
+#include <QByteArray>
 #include <QListWidgetItem>
 #include <QProcess>
 #include <QDebug>
@@ -92,9 +93,9 @@ void ResultsDisassemblyPage::showDisassemblyBySymbol() {
     // Show empty tab when selected symbol is not valid
     if (m_curSymbol.symbol.isEmpty()) {
         clear();
-        return;
     }
 
+    m_action = Action::Disassembly;
     // Call objdump with arguments: mangled name of function and binary file
     QString processName =
             m_objdump + QLatin1String(" --disassemble=") + m_curSymbol.mangled + QLatin1String(" ") + m_curSymbol.path;
@@ -109,9 +110,9 @@ void ResultsDisassemblyPage::showDisassemblyByAddressRange() {
     // Show empty tab when selected symbol is not valid
     if (m_curSymbol.symbol.isEmpty()) {
         clear();
-        return;
     }
 
+    m_action = Action::Disassembly;
     // Call objdump with arguments: addresses range and binary file
     QString processName =
             m_objdump + QLatin1String(" -d --start-address=0x") + QString::number(m_curSymbol.relAddr, 16) +
@@ -129,20 +130,58 @@ void ResultsDisassemblyPage::showDisassemblyByAddressRange() {
 }
 
 /**
+ *   Run processName command in QProcess and diagnoses some cases
+ * @param processName
+ * @return
+ */
+QByteArray ResultsDisassemblyPage::processDisassemblyGenRun(QString processName) {
+    QByteArray processOutput = QByteArray();
+    if (m_curSymbol.symbol.isEmpty()) {
+        processOutput = "Empty symbol ?? is selected";
+    } else {
+        QProcess asmProcess;
+        asmProcess.start(processName);
+
+        bool started = asmProcess.waitForStarted();
+        bool finished = asmProcess.waitForFinished();
+        if (!started || !finished) {
+            if (!started) {
+                if (m_action == Action::Disassembly) {
+                    if (!m_arch.startsWith(QLatin1String("arm"))) {
+                        processOutput = QByteArray(
+                                "Process was not started. Probably command 'objdump' not found, but can be installed with 'apt install binutils'");
+                    } else {
+                        processOutput = QByteArray(
+                                "Process was not started. Probably command 'arm-linux-gnueabi-objdump' not found, but can be installed with 'apt install binutils-arm-linux-gnueabi'");
+                    }
+                } else {
+                    processOutput = QByteArray(
+                            "Process was not started. Probably command 'perf' not found, but can be installed with 'apt install linux-tools-common'");
+                }
+            } else {
+                return processOutput;
+            }
+        } else {
+            processOutput = asmProcess.readAllStandardOutput();
+        }
+
+        if (processOutput.isEmpty()) {
+            processOutput = QByteArray("Empty output of command ");
+            processOutput += processName.toUtf8();
+        }
+    }
+    return processOutput;
+}
+
+/**
  *  Produce disassembler with 'objdump' and output to Disassembly tab
  */
 void ResultsDisassemblyPage::showDisassembly(QString processName) {
     QTemporaryFile m_tmpFile;
-    QProcess asmProcess;
 
     if (m_tmpFile.open()) {
-        asmProcess.start(processName);
-
-        if (!asmProcess.waitForStarted() || !asmProcess.waitForFinished()) {
-            return;
-        }
         QTextStream stream(&m_tmpFile);
-        stream << asmProcess.readAllStandardOutput();
+        stream << processDisassemblyGenRun(processName);
         m_tmpFile.close();
     }
 
@@ -175,24 +214,17 @@ void ResultsDisassemblyPage::showAnnotate() {
     // Show empty tab when selected symbol is not valid
     if (m_curSymbol.symbol.isEmpty()) {
         clear();
-        return;
     }
 
-    QTemporaryFile m_tmpFile;
-    QProcess asmProcess;
-
+    m_action = Action::Annotate;
     QString bareSymbol = m_curSymbol.symbol.split(QLatin1Char('('))[0];
     QString processName = QLatin1String("perf annotate -f --asm-raw --no-source ") + bareSymbol +
                           QLatin1String(" -i ") + m_perfDataPath;
 
+    QTemporaryFile m_tmpFile;
     if (m_tmpFile.open()) {
-        asmProcess.start(processName);
-
-        if (!asmProcess.waitForStarted() || !asmProcess.waitForFinished()) {
-            return;
-        }
         QTextStream stream(&m_tmpFile);
-        stream << asmProcess.readAllStandardOutput();
+        stream << processDisassemblyGenRun(processName);
         m_tmpFile.close();
     }
 
@@ -233,6 +265,11 @@ void ResultsDisassemblyPage::showAnnotate() {
                 QStandardItem *asmItem = new QStandardItem(asmLine);
                 model->setItem(row, 2, asmItem);
                 row++;
+            } else if (annotateLine.startsWith(QLatin1String("Empty output of command")) ||
+                       annotateLine.startsWith(QLatin1String("Process was not started")) ||
+                       annotateLine.startsWith(QLatin1String("Empty symbol"))) {
+                QStandardItem *annotateItem = new QStandardItem(annotateLine);
+                model->setItem(row, 2, annotateItem);
             }
         }
     }
