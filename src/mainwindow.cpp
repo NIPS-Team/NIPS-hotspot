@@ -238,6 +238,14 @@ void MainWindow::setAppPath(const QString& path)
     emit appPathChanged(m_appPath);
 }
 
+void MainWindow::setOverrideAppPathWithPerfDataPath(bool b) {
+    m_overrideAppPathWithPerfDataPath = b;
+}
+
+void MainWindow::setPerfDataPath(const QString& path) {
+    m_perfDataPath = path;
+}
+
 void MainWindow::setArch(const QString& arch)
 {
     m_arch = arch;
@@ -255,6 +263,14 @@ QString MainWindow::getSysroot() const {
 
 QString MainWindow::getApplicationPath() const {
     return m_appPath;
+}
+
+bool MainWindow::getOverrideAppPathWithPerfDataPath() const {
+    return m_overrideAppPathWithPerfDataPath;
+}
+
+QString MainWindow::getPerfDataPath() const {
+    return m_perfDataPath;
 }
 
 QString MainWindow::getExtraLibPaths() const {
@@ -280,6 +296,13 @@ void MainWindow::onOpenFileButtonClicked()
     if (fileName.isEmpty()) {
         return;
     }
+
+    // Save choosen perf data path to use in Settings Dialog
+    QFileInfo file(fileName);
+    m_perfDataPath = file.path();
+    // If override app path with perf data path is switched on, override app path with perf data path
+    if (m_overrideAppPathWithPerfDataPath)
+        setAppPath(m_perfDataPath);
 
     openFile(fileName);
 }

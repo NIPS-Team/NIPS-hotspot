@@ -30,6 +30,8 @@ signals:
 private:
     Ui::SettingsDialog *ui;
     void chooseDirectoryAndCopyToLineEdit(QWebStyleEdit* qWebStyleEdit);
+    void chooseDirectoryAndAddToLineEdit(QWebStyleEdit* qWebStyleEdit);
+    QString m_appPath;
 
 private slots:
     void on_btnSysroot_clicked();
@@ -38,6 +40,7 @@ private slots:
     void on_btnDebugPaths_clicked();
     void on_btnKallsyms_clicked();
     void on_buttonBox_clicked(QAbstractButton* );
+    void on_checkBoxOverrideWithPerfDataPath_clicked();
 };
 
 #endif // SETTINGSDIALOG_H

@@ -105,3 +105,14 @@ void QWebStyleEdit::setColors() {
         QLineEdit::setText(m_grText);
     }
 }
+
+void QWebStyleEdit::setTextEnabled() {
+    setEnabled(true);
+    setForegroundColor(textFGColor);
+}
+
+void QWebStyleEdit::setTextDisabled() {
+    setDisabled(true);
+    setForegroundColor(grTextFGColor);
+}
+

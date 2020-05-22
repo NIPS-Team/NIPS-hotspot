@@ -59,6 +59,8 @@ public:
     QString getDebugPaths() const;
     QString getExtraLibPaths() const;
     QString getAppPath() const;
+    QString getPerfDataPath() const;
+    bool getOverrideAppPathWithPerfDataPath() const;
     QString getArch() const;
 
 public slots:
@@ -67,6 +69,8 @@ public slots:
     void setDebugPaths(const QString& paths);
     void setExtraLibPaths(const QString& paths);
     void setAppPath(const QString& path);
+    void setPerfDataPath(const QString& path);
+    void setOverrideAppPathWithPerfDataPath(bool);
     void setArch(const QString& arch);
     void setDisasmApproach(const QString& disasmApproach);
 
@@ -114,6 +118,10 @@ private:
     QString m_debugPaths;
     QString m_extraLibPaths;
     QString m_appPath;
+    // Path to perf data file opened with File Open Dialog
+    QString m_perfDataPath;
+    // App Path will be overridden with perf data path
+    bool m_overrideAppPathWithPerfDataPath;
     QString m_arch;
     // Disassembly approach code: 'symbol' - by function symbol, 'address' or default - by addresses range
     QString m_disasmApproach;

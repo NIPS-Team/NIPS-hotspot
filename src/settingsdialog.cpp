@@ -21,9 +21,24 @@ SettingsDialog::SettingsDialog(QWidget* parent) :
     ui->lineEditSysroot->setToolTip(QLatin1String("Path to the sysroot. Leave empty to use the local machine."));
     ui->lineEditSysroot->setText(mainWindow->getSysroot());
 
-    ui->lineEditApplicationPath->setGrayedText(QLatin1String("auto-detect"));
     ui->lineEditApplicationPath->setToolTip(QLatin1String("Path to the application binary and library."));
-    ui->lineEditApplicationPath->setText(mainWindow->getApplicationPath());
+
+    m_appPath = mainWindow->getApplicationPath();
+    // If perf data file has not been choosen then uncheck Perf data path override checkbox
+    if (mainWindow->getPerfDataPath().isEmpty())
+        mainWindow->setOverrideAppPathWithPerfDataPath(false);
+    // If the value of property with Perf data path override checkbox state is "checked", then
+    if (mainWindow->getOverrideAppPathWithPerfDataPath()) {
+        // Check the checkbox
+        ui->checkBoxOverrideWithPerfDataPath->setCheckState(Qt::Checked);
+        ui->lineEditApplicationPath->setText(mainWindow->getPerfDataPath());
+        ui->lineEditApplicationPath->setTextDisabled();
+    } else {
+        // Uncheck the checkbox
+        ui->checkBoxOverrideWithPerfDataPath->setCheckState(Qt::Unchecked);
+        ui->lineEditApplicationPath->setText(m_appPath);
+        ui->lineEditApplicationPath->setTextEnabled();
+    }
 
     ui->lineEditExtraLibraryPaths->setGrayedText(QLatin1String("empty"));
     ui->lineEditExtraLibraryPaths->setToolTip(QLatin1String("List of colon-separated paths that contain additional libraries."));
@@ -66,19 +81,45 @@ void SettingsDialog::on_btnApplicationPath_clicked() {
     chooseDirectoryAndCopyToLineEdit(ui->lineEditApplicationPath);
 }
 void SettingsDialog::on_btnExtraLibraryPaths_clicked() {
-    chooseDirectoryAndCopyToLineEdit(ui->lineEditExtraLibraryPaths);
+    chooseDirectoryAndAddToLineEdit(ui->lineEditExtraLibraryPaths);
 }
 void SettingsDialog::on_btnDebugPaths_clicked() {
-    chooseDirectoryAndCopyToLineEdit(ui->lineEditDebugPaths);
+    chooseDirectoryAndAddToLineEdit(ui->lineEditDebugPaths);
 }
 void SettingsDialog::on_btnKallsyms_clicked() {
     chooseDirectoryAndCopyToLineEdit(ui->lineEditKallsyms);
+}
+
+void SettingsDialog::on_checkBoxOverrideWithPerfDataPath_clicked() {
+    if (ui->checkBoxOverrideWithPerfDataPath->isChecked()) {
+        m_appPath = ui->lineEditApplicationPath->text();
+        ui->lineEditApplicationPath->setText(mainWindow->getPerfDataPath());
+        ui->lineEditApplicationPath->setTextDisabled();
+        ui->btnApplicationPath->setDisabled(true);
+    } else {
+        ui->lineEditApplicationPath->setText(m_appPath);
+        ui->lineEditApplicationPath->setTextEnabled();
+        ui->btnApplicationPath->setEnabled(true);
+    }
+
 }
 
 void SettingsDialog::chooseDirectoryAndCopyToLineEdit(QWebStyleEdit* qWebStyleEdit) {
     QString sDir = chooseDirectory();
     if (!sDir.isEmpty())
         qWebStyleEdit->setText(sDir);
+}
+
+void SettingsDialog::chooseDirectoryAndAddToLineEdit(QWebStyleEdit* qWebStyleEdit) {
+    QString sDir = chooseDirectory();
+    if (!sDir.isEmpty()) {
+        QString sDirs = qWebStyleEdit->text();
+        if (sDirs.isEmpty())
+            sDirs = sDir;
+        else
+            sDirs = sDirs + tr(":") + sDir;
+        qWebStyleEdit->setText(sDirs);
+    }
 }
 
 void SettingsDialog::on_buttonBox_clicked(QAbstractButton * button) {
@@ -95,6 +136,7 @@ void SettingsDialog::on_buttonBox_clicked(QAbstractButton * button) {
         sArch = sArch == QLatin1String("auto-detect") ? QLatin1String("") : sArch;
         // Save architecture to the MainWindow class instance variable
         mainWindow->setArch(sArch);
+        mainWindow->setOverrideAppPathWithPerfDataPath(ui->checkBoxOverrideWithPerfDataPath->isChecked());
     }
     close();
 }

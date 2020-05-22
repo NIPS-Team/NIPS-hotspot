@@ -28,6 +28,8 @@ public:
 
     void grTextFGColorsetText(const QString&);
     void setColors();
+    void setTextEnabled();
+    void setTextDisabled();
 protected:
     // void focusInEvent(QFocusEvent*) override;
     // void focusOutEvent(QFocusEvent*) override;
