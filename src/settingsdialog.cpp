@@ -24,18 +24,18 @@ SettingsDialog::SettingsDialog(QWidget* parent) :
     ui->lineEditApplicationPath->setToolTip(QLatin1String("Path to the application binary and library."));
 
     m_appPath = mainWindow->getApplicationPath();
-    // If perf data file has not been choosen then uncheck Perf data path override checkbox
-    if (mainWindow->getPerfDataPath().isEmpty())
-        mainWindow->setOverrideAppPathWithPerfDataPath(false);
+
     // If the value of property with Perf data path override checkbox state is "checked", then
     if (mainWindow->getOverrideAppPathWithPerfDataPath()) {
         // Check the checkbox
         ui->checkBoxOverrideWithPerfDataPath->setCheckState(Qt::Checked);
+        ui->btnApplicationPath->setEnabled(false);
         ui->lineEditApplicationPath->setText(mainWindow->getPerfDataPath());
         ui->lineEditApplicationPath->setTextDisabled();
     } else {
         // Uncheck the checkbox
         ui->checkBoxOverrideWithPerfDataPath->setCheckState(Qt::Unchecked);
+        ui->btnApplicationPath->setEnabled(true);
         ui->lineEditApplicationPath->setText(m_appPath);
         ui->lineEditApplicationPath->setTextEnabled();
     }

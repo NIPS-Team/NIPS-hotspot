@@ -194,6 +194,9 @@ MainWindow::MainWindow(QWidget* parent)
     auto config = m_config->group("Window");
     restoreGeometry(config.readEntry("geometry", QByteArray()));
     restoreState(config.readEntry("state", QByteArray()));
+
+    // Initially set on the Override app path with perf data path option
+    m_overrideAppPathWithPerfDataPath = true;
 }
 
 MainWindow::~MainWindow() = default;
@@ -297,7 +300,7 @@ void MainWindow::onOpenFileButtonClicked()
         return;
     }
 
-    // Save choosen perf data path to use in Settings Dialog
+    // Save chosen perf data path to use in Settings Dialog
     QFileInfo file(fileName);
     m_perfDataPath = file.path();
     // If override app path with perf data path is switched on, override app path with perf data path
