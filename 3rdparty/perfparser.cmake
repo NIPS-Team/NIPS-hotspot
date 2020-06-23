@@ -20,6 +20,7 @@ add_executable(hotspot-perfparser
     perfparser/app/perfkallsyms.cpp
     perfparser/app/perfaddresscache.cpp
     perfparser/app/perftracingdata.cpp
+    logging/logging.cpp
 )
 
 target_link_libraries(hotspot-perfparser

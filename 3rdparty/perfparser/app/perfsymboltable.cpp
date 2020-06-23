@@ -438,7 +438,7 @@ int PerfSymbolTable::insertSubprogram(Dwarf_Die *top, Dwarf_Addr entry, quint64 
     const QByteArray file = dwarf_decl_file(top);
 
     qint32 fileId = m_unwind->resolveString(file);
-    int locationId = m_unwind->resolveLocation(PerfUnwind::Location(entry, fileId, m_pid, line,
+    int locationId = m_unwind->resolveLocation(PerfUnwind::Location(entry, 0, fileId, m_pid, line,
                                                                     column, inlineCallLocationId));
     qint32 symId = m_unwind->resolveString(demangle(dieName(top)));
     qint32 mangleId = m_unwind->resolveString(dieName(top));
@@ -915,9 +915,8 @@ int PerfSymbolTable::lookupFrame(Dwarf_Addr ip, bool isKernel,
 
     Dwfl_Module *mod = module(ip, elf);
 
-    PerfUnwind::Location addressLocation(
-                (m_unwind->architecture() != PerfRegisterInfo::ARCH_ARM || (ip & 1))
-                ? ip : ip + 1, -1, m_pid);
+    bool isArmArch = (m_unwind->architecture() == PerfRegisterInfo::ARCH_ARM);
+    PerfUnwind::Location addressLocation((!isArmArch || (ip & 1)) ? ip : ip + 1, 0, -1, m_pid);
     PerfUnwind::Location functionLocation(addressLocation);
 
     QByteArray symname;
@@ -925,6 +924,7 @@ int PerfSymbolTable::lookupFrame(Dwarf_Addr ip, bool isKernel,
 
     quint64 offset = 0;
     quint64 size = 0;
+    GElf_Off adjust = 0;
     if (mod) {
         auto cachedAddrInfo = addressCache->findSymbol(elf, addressLocation.address);
         if (cachedAddrInfo.isValid()) {
@@ -933,17 +933,32 @@ int PerfSymbolTable::lookupFrame(Dwarf_Addr ip, bool isKernel,
             offset = cachedAddrInfo.value;
             size = cachedAddrInfo.size;
         } else {
+            Elf *elfp;
+            GElf_Word shndx;
             GElf_Sym sym;
             // For addrinfo we need the raw pointer into symtab, so we need to adjust ourselves.
-            symname = dwfl_module_addrinfo(mod, addressLocation.address, &off, &sym, nullptr, nullptr,
+            symname = dwfl_module_addrinfo(mod, addressLocation.address, &off, &sym, &shndx, &elfp,
                                            nullptr);
             if (off != addressLocation.address) {
+                GElf_Ehdr ehdr;
+                gelf_getehdr (elfp, &ehdr);
+                //For relocated modules the adjustment (value of 'off' argument) is section relative.
+                if (ehdr.e_type == ET_REL) {
+                    Elf_Scn *refscn = elf_getscn (elfp, shndx);
+                    GElf_Shdr refshdr_mem, *refshdr = gelf_getshdr (refscn, &refshdr_mem);
+                    adjust = refshdr->sh_addr - elfStart;
+                    off += adjust;
+                }
                 addressCache->cacheSymbol(elf, addressLocation.address - off, sym.st_value, sym.st_size, symname);
 
                 offset = sym.st_value;
+                offset = (isArmArch && (offset & 1)) ? offset - 1 : offset;
                 size = sym.st_size;
             }
         }
+        // offset - relative address of the function start
+        // off - offset from the function start
+        addressLocation.relAddr = offset + off;
 
         if (off == addressLocation.address) {// no symbol found
             symname = fakeSymbolFromSection(mod, addressLocation.address);
@@ -1037,7 +1052,6 @@ int PerfSymbolTable::lookupFrame(Dwarf_Addr ip, bool isKernel,
                                     PerfUnwind::Symbol(symId, symId, offset, size, binaryId, binaryPathId, isKernel));
         }
     }
-
     Q_ASSERT(addressLocation.parentLocationId != -1);
     Q_ASSERT(m_unwind->hasSymbol(addressLocation.parentLocationId));
 
@@ -1104,6 +1118,14 @@ Dwfl *PerfSymbolTable::attachDwfl(void *arg)
 {
     if (static_cast<pid_t>(m_pid) == dwfl_pid(m_dwfl))
         return m_dwfl; // Already attached, nothing to do
+    //  Fix for issue: dwfl_attach_state should be called only for user-level CPU register state
+    //  and user-level stack, allowing stack unwinding.
+    PerfUnwind::UnwindInfo *unwindInfo = static_cast<PerfUnwind::UnwindInfo *>(arg);
+    if (!((unwindInfo->sample->type() & PERF_SAMPLE_REGS_USER) &&
+        // Records the current user-level CPU register state
+          (unwindInfo->sample->type() & PERF_SAMPLE_STACK_USER)))
+        // Records the user-level stack, allowing stack unwinding.
+        return nullptr;
 
     if (!dwfl_attach_state(m_dwfl, m_firstElf.elf(), m_pid, &threadCallbacks, arg)) {
         qWarning() << m_pid << "failed to attach state" << dwfl_errmsg(dwfl_errno());

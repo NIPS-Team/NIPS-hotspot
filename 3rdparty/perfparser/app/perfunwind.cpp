@@ -35,6 +35,7 @@ uint qHash(const PerfUnwind::Location &location, uint seed)
 {
     QtPrivate::QHashCombine hash;
     seed = hash(seed, location.address);
+    seed = hash(seed, location.relAddr);
     seed = hash(seed, location.file);
     seed = hash(seed, location.pid);
     seed = hash(seed, location.line);
@@ -44,7 +45,7 @@ uint qHash(const PerfUnwind::Location &location, uint seed)
 
 bool operator==(const PerfUnwind::Location &a, const PerfUnwind::Location &b)
 {
-    return a.address == b.address && a.file == b.file && a.pid == b.pid && a.line == b.line
+    return a.address == b.address && a.relAddr == b.relAddr && a.file == b.file && a.pid == b.pid && a.line == b.line
             && a.column == b.column;
 }
 
@@ -364,7 +365,7 @@ bool PerfUnwind::ipIsInKernelSpace(quint64 ip) const
 
 QDataStream &operator<<(QDataStream &stream, const PerfUnwind::Location &location)
 {
-    return stream << location.address << location.file << location.pid << location.line
+    return stream << location.address << location.relAddr << location.file << location.pid << location.line
                   << location.column << location.parentLocationId;
 }
 
@@ -445,10 +446,14 @@ void PerfUnwind::resolveCallchain()
     bool addedUserFrames = false;
     PerfSymbolTable *symbols = symbolTable(m_currentUnwind.sample->pid());
 
-    auto reportIp = [&](quint64 ip) -> bool {
+    auto reportIp = [&](quint64 ip, bool branchStack) -> bool {
         symbols->attachDwfl(&m_currentUnwind);
-        m_currentUnwind.frames.append(symbols->lookupFrame(ip, isKernel,
-                                            &m_currentUnwind.isInterworking));
+        int frame = symbols->lookupFrame(ip, isKernel, &m_currentUnwind.isInterworking);
+        if (branchStack) {
+            m_currentUnwind.frames.append(frame);
+        } else {
+            m_currentUnwind.disasmFrames.append(frame);
+        }
         return !symbols->cacheIsDirty();
     };
 
@@ -479,21 +484,21 @@ void PerfUnwind::resolveCallchain()
                 return;
             }
         } else {
-            // prefer user frames from branch stack if available
-            if (hasBranchStack && !isKernel)
-                break;
-
             // sometimes it skips the first user frame.
             if (!addedUserFrames && !isKernel && ip != m_currentUnwind.sample->ip()) {
-                if (!reportIp(m_currentUnwind.sample->ip()))
+                if (!reportIp(m_currentUnwind.sample->ip(), !hasBranchStack))
                     return;
             }
 
-            if (!reportIp(ip))
+            if (!reportIp(ip, !hasBranchStack))
                 return;
 
             if (!isKernel)
                 addedUserFrames = true;
+
+            // prefer user frames from branch stack if available
+            if (hasBranchStack && !isKernel)
+                break;
         }
     }
 
@@ -506,9 +511,9 @@ void PerfUnwind::resolveCallchain()
     // so the branch is made up of the first callee and all callers
     for (int i = 0, c = m_currentUnwind.sample->branchStack().size(); i < c; ++i) {
         const auto& entry = m_currentUnwind.sample->branchStack()[i];
-        if (i == 0 && !reportIp(entry.to))
+        if (i == 0 && !reportIp(entry.to, hasBranchStack))
             return;
-        if (!reportIp(entry.from))
+        if (!reportIp(entry.from, hasBranchStack))
             return;
     }
 }
@@ -596,6 +601,7 @@ void PerfUnwind::analyze(const PerfRecordSample &sample)
         m_currentUnwind.firstGuessedFrame = -1;
         m_currentUnwind.sample = &sample;
         m_currentUnwind.frames.clear();
+        m_currentUnwind.disasmFrames.clear();
 
         userSymbols->updatePerfMap();
         if (!sample.callchain().isEmpty() || !sample.branchStack().isEmpty())
@@ -669,7 +675,7 @@ void PerfUnwind::analyze(const PerfRecordSample &sample)
     QByteArray buffer;
     QDataStream stream(&buffer, QIODevice::WriteOnly);
     stream << static_cast<quint8>(type) << sample.pid()
-           << sample.tid() << sample.time() << sample.cpu() << m_currentUnwind.frames
+           << sample.tid() << sample.time() << sample.cpu() << m_currentUnwind.frames << m_currentUnwind.disasmFrames
            << numGuessedFrames << values;
 
     if (type == TracePointSample) {

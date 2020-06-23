@@ -1,30 +1,3 @@
-/*
-  resultsbottomuppage.cpp
-
-  This file is part of Hotspot, the Qt GUI for performance analysis.
-
-  Copyright (C) 2017-2019 Klarälvdalens Datakonsult AB, a KDAB Group company, info@kdab.com
-  Author: Nate Rogers <nate.rogers@kdab.com>
-
-  Licensees holding valid commercial KDAB Hotspot licenses may use this file in
-  accordance with Hotspot Commercial License Agreement provided with the Software.
-
-  Contact info@kdab.com if any conditions of this licensing are not clear to you.
-
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 2 of the License, or
-  (at your option) any later version.
-
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
 #include "resultsdisassemblypage.h"
 #include "ui_resultsdisassemblypage.h"
 
@@ -34,7 +7,6 @@
 #include <QTextStream>
 #include <QMessageBox>
 #include <QString>
-#include <QByteArray>
 #include <QListWidgetItem>
 #include <QProcess>
 #include <QDebug>
@@ -56,9 +28,9 @@
 ResultsDisassemblyPage::ResultsDisassemblyPage(FilterAndZoomStack *filterStack, PerfParser *parser, QWidget *parent)
         : QWidget(parent), ui(new Ui::ResultsDisassemblyPage) {
     ui->setupUi(this);
-    ui->splitter->setStretchFactor(0, 1);
-    ui->splitter->setStretchFactor(1, 1);
-    ui->splitter->setStretchFactor(2, 8);
+
+    connect(ui->asmView, &QAbstractItemView::doubleClicked, this,
+            &ResultsDisassemblyPage::jumpToAsmCallee);
 }
 
 ResultsDisassemblyPage::~ResultsDisassemblyPage() = default;
@@ -73,6 +45,22 @@ void ResultsDisassemblyPage::clear() {
     if (rowCount > 0) {
         ui->asmView->model()->removeRows(0, rowCount, QModelIndex());
     }
+}
+
+/**
+ *  Set model to asmView and resize it's columns
+ * @param model
+ * @param numTypes
+ */
+void ResultsDisassemblyPage::setAsmViewModel(QStandardItemModel *model, int numTypes) {
+    ui->asmView->setModel(model);
+    ui->asmView->header()->setStretchLastSection(false);
+    ui->asmView->header()->setSectionResizeMode(0, QHeaderView::Stretch);
+    for (int event = 0; event < numTypes; event++) {
+        ui->asmView->setColumnWidth(event + 1, 100);
+        ui->asmView->header()->setSectionResizeMode(event + 1, QHeaderView::Interactive);
+    }
+    emit model->dataChanged(QModelIndex(), QModelIndex());
 }
 
 /**
@@ -187,10 +175,13 @@ void ResultsDisassemblyPage::showDisassembly(QString processName) {
 
     if (m_tmpFile.open()) {
         int row = 0;
-        QStandardItemModel *model = new QStandardItemModel();
+        model = new QStandardItemModel();
 
         QStringList headerList;
         headerList.append(QLatin1String("Assembly"));
+        for (int i = 0; i < m_disasmResult.selfCosts.numTypes(); i++) {
+            headerList.append(m_disasmResult.selfCosts.typeName(i));
+        }
         model->setHorizontalHeaderLabels(headerList);
 
         QTextStream stream(&m_tmpFile);
@@ -198,12 +189,41 @@ void ResultsDisassemblyPage::showDisassembly(QString processName) {
             QString asmLine = stream.readLine();
             if (asmLine.isEmpty() || asmLine.startsWith(QLatin1String("Disassembly"))) continue;
 
+            QStringList asmTokens = asmLine.split(QLatin1Char(':'));
+            QString addrLine = asmTokens.value(0);
+            QString costLine = QString();
+
             QStandardItem *asmItem = new QStandardItem();
             asmItem->setText(asmLine);
             model->setItem(row, 0, asmItem);
+
+            // Calculate event times and add them in red to corresponding columns of the current disassembly row
+            for (int event = 0; event < m_disasmResult.selfCosts.numTypes(); event++) {
+                float totalCost = 0;
+                auto &entry = m_disasmResult.entry(m_curSymbol);
+                QHash<Data::Location, Data::LocationCost>::iterator i = entry.relSourceMap.begin();
+                while (i != entry.relSourceMap.end()) {
+                    Data::Location location = i.key();
+                    Data::LocationCost locationCost = i.value();
+                    float cost = locationCost.selfCost[event];
+                    if (QString::number(location.relAddr, 16) == addrLine.trimmed()) {
+                        costLine = QString::number(cost);
+                    }
+                    totalCost += cost;
+                    i++;
+                }
+
+                float costInstruction = costLine.toFloat();
+                costLine = costInstruction ? QString::number(costInstruction * 100 / totalCost, 'f', 2) +
+                                             QLatin1String("%") : QString();
+
+                QStandardItem *costItem = new QStandardItem(costLine);
+                costItem->setForeground(Qt::red);
+                model->setItem(row, event + 1, costItem);
+            }
             row++;
         }
-        ui->asmView->setModel(model);
+        setAsmViewModel(model, m_disasmResult.selfCosts.numTypes());
     }
 }
 
@@ -228,26 +248,47 @@ void ResultsDisassemblyPage::showAnnotate() {
         m_tmpFile.close();
     }
 
-    QStandardItemModel *model = new QStandardItemModel();
+    model = new QStandardItemModel();
+
     QStringList headerList;
-    headerList.append(QLatin1String("CPU Time"));
-    headerList.append(QLatin1String("Address"));
     headerList.append(QLatin1String("Assembly"));
+    headerList.append(QLatin1String("Event Time"));
     model->setHorizontalHeaderLabels(headerList);
     int row = 0;
+    bool isSymBinary = false;
+    bool hasEmptyOutput = false;
 
     if (m_tmpFile.open()) {
         QTextStream stream(&m_tmpFile);
         while (!stream.atEnd()) {
             QString annotateLine = stream.readLine();
 
-            if (annotateLine.isEmpty() || annotateLine.contains(QLatin1String("Percent"))) continue;
+            if (annotateLine.isEmpty()) continue;
+
+            if (!isSymBinary)
+                hasEmptyOutput = (annotateLine.startsWith(QLatin1String("Empty output of command")) ||
+                                  annotateLine.startsWith(QLatin1String("Process was not started")) ||
+                                  annotateLine.startsWith(QLatin1String("Empty symbol")));
+
+            if (annotateLine.trimmed().startsWith(QLatin1String("Percent"))) {
+                if (annotateLine.contains(m_curSymbol.binary)) {
+                    isSymBinary = true;
+
+                    QStandardItem *annotateItem = new QStandardItem(annotateLine);
+                    model->setItem(row++, 0, annotateItem);
+                    continue;
+                } else {
+                    isSymBinary = false;
+                }
+            }
+
+            if (!isSymBinary && !hasEmptyOutput)
+                continue;
 
             QStringList asmTokens = annotateLine.split(QLatin1Char(':'));
             QString cpuLine = asmTokens.value(0);
             QString addrLine = asmTokens.value(1);
 
-            asmTokens.removeAt(0);
             asmTokens.removeAt(0);
             QString asmLine = asmTokens.join(QLatin1Char(':'));
 
@@ -256,25 +297,19 @@ void ResultsDisassemblyPage::showAnnotate() {
                 if (!cpuLine.isEmpty() && cpuLine.toDouble() != 0) {
                     QStandardItem *cpuItem = new QStandardItem(cpuLine + QLatin1String("%"));
                     cpuItem->setForeground(Qt::red);
-                    model->setItem(row, 0, cpuItem);
+                    model->setItem(row, 1, cpuItem);
                 }
 
-                QStandardItem *addrItem = new QStandardItem(addrLine);
-                model->setItem(row, 1, addrItem);
-
                 QStandardItem *asmItem = new QStandardItem(asmLine);
-                model->setItem(row, 2, asmItem);
+                model->setItem(row, 0, asmItem);
                 row++;
-            } else if (annotateLine.startsWith(QLatin1String("Empty output of command")) ||
-                       annotateLine.startsWith(QLatin1String("Process was not started")) ||
-                       annotateLine.startsWith(QLatin1String("Empty symbol"))) {
+            } else if (hasEmptyOutput) {
                 QStandardItem *annotateItem = new QStandardItem(annotateLine);
-                model->setItem(row, 2, annotateItem);
+                model->setItem(row, 0, annotateItem);
             }
         }
     }
-
-    ui->asmView->setModel(model);
+    setAsmViewModel(model, 1);
 }
 
 /**
@@ -317,7 +352,72 @@ void ResultsDisassemblyPage::setData(const Data::DisassemblyResult &data) {
     m_extraLibPaths = data.extraLibPaths;
     m_arch = data.arch.trimmed().toLower();
     m_disasmApproach = data.disasmApproach;
+    m_disasmResult = data;
 
     m_objdump = m_arch.startsWith(QLatin1String("arm")) ? QLatin1String("arm-linux-gnueabi-objdump") : QLatin1String(
             "objdump");
+    if (m_arch.startsWith(QLatin1String("armv8")) || m_arch.startsWith(QLatin1String("aarch64"))) {
+        m_arch = QLatin1String("armv8");
+        m_objdump = QLatin1String("aarch64-linux-gnu-objdump");
+    }
+}
+
+/**
+ * Clear call stack when another symbol was selected
+ */
+void ResultsDisassemblyPage::resetCallStack() {
+    m_callStack.clear();
+}
+
+/**
+ *  Auxilary method to extract relative address of selected 'call' instruction and it's name
+ */
+void calcFunction(QString asmLineCall, QString *offset, QString *symName) {
+    QStringList sym = asmLineCall.trimmed().split(QLatin1Char('<'));
+    *offset = sym[0].trimmed();
+    *symName = sym[1].replace(QLatin1Char('>'), QLatin1String(""));
+}
+
+/**
+ *  Slot method for double click on 'call' or 'return' instructions
+ *  We show it's Disassembly (Annotate) by double click on 'call' instruction
+ *  And we go back by double click on 'return'
+ */
+void ResultsDisassemblyPage::jumpToAsmCallee(QModelIndex index) {
+    QStandardItem *asmItem = model->takeItem(index.row(), 0);
+    QString opCodeCall = m_arch.startsWith(QLatin1String("arm")) ? QLatin1String("bl") : QLatin1String("callq");
+    QString opCodeReturn = m_arch.startsWith(QLatin1String("arm")) ? QLatin1String("ret") : QLatin1String("retq");
+    QString asmLine = asmItem->text();
+    if (asmLine.contains(opCodeCall)) {
+        QString offset, symName;
+        QString asmLineSimple = asmLine.simplified();
+
+        calcFunction(asmLineSimple.section(opCodeCall, 1), &offset, &symName);
+
+        QHash<Data::Symbol, Data::DisassemblyEntry>::iterator i = m_disasmResult.entries.begin();
+        while (i != m_disasmResult.entries.end()) {
+            QString relAddr = QString::number(i.key().relAddr, 16);
+            if (!i.key().mangled.isEmpty() &&
+                (symName.contains(i.key().mangled) || symName.contains(i.key().symbol) ||
+                 i.key().mangled.contains(symName) || i.key().symbol.contains(symName)) &&
+                ((relAddr == offset) ||
+                 (i.key().size == 0 && i.key().relAddr == 0)))
+            {
+                m_callStack.push(m_curSymbol);
+                setData(i.key());
+                break;
+            }
+            i++;
+        }
+    }
+    if (asmLine.contains(opCodeReturn)) {
+        if (!m_callStack.isEmpty()) {
+            setData(m_callStack.pop());
+        }
+    }
+    if (m_action == Action::Disassembly) {
+        showDisassembly();
+    } else {
+        showAnnotate();
+    }
 }
