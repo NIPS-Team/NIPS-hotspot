@@ -102,7 +102,7 @@ QString PerfUnwind::defaultKallsymsPath()
 }
 
 PerfUnwind::PerfUnwind(QIODevice *output, const QString &systemRoot, const QString &debugPath,
-                       const QString &extraLibsPath, const QString &appPath, bool printStats) :
+                       const QString &extraLibsPath, const QString &appPath, bool printStats, bool branchTraverse) :
     m_output(output), m_architecture(PerfRegisterInfo::ARCH_INVALID), m_systemRoot(systemRoot),
     m_extraLibsPath(extraLibsPath), m_appPath(appPath), m_debugPath(debugPath),
     m_kallsymsPath(QDir::rootPath() + defaultKallsymsPath()), m_ignoreKallsymsBuildId(false),
@@ -461,7 +461,7 @@ void PerfUnwind::resolveCallchain()
     // in the normal callchain. The branch stack contains the non-kernel IPs then.
     const bool hasBranchStack = !m_currentUnwind.sample->branchStack().isEmpty();
 
-    for (int i = 0, c = m_currentUnwind.sample->callchain().size(); i < c; ++i) {
+    for (int i = 0, c = qMin(maxUnwindStack(), m_currentUnwind.sample->callchain().size()); i < c; ++i) {
         quint64 ip = m_currentUnwind.sample->callchain()[i];
 
         if (ip > PERF_CONTEXT_MAX) {
@@ -484,6 +484,11 @@ void PerfUnwind::resolveCallchain()
                 return;
             }
         } else {
+            // traverse only branchStack by option --branch-traverse
+            bool lbrBranchStack = hasBranchStack && !isKernel;
+            if (branchTraverse() && lbrBranchStack)
+                break;
+
             // sometimes it skips the first user frame.
             if (!addedUserFrames && !isKernel && ip != m_currentUnwind.sample->ip()) {
                 if (!reportIp(m_currentUnwind.sample->ip(), !hasBranchStack))
@@ -497,7 +502,7 @@ void PerfUnwind::resolveCallchain()
                 addedUserFrames = true;
 
             // prefer user frames from branch stack if available
-            if (hasBranchStack && !isKernel)
+            if (lbrBranchStack)
                 break;
         }
     }
@@ -509,7 +514,7 @@ void PerfUnwind::resolveCallchain()
     // if available, also resolve the callchain stored in the branch stack:
     // caller is stored in "from", callee is stored in "to"
     // so the branch is made up of the first callee and all callers
-    for (int i = 0, c = m_currentUnwind.sample->branchStack().size(); i < c; ++i) {
+    for (int i = 0, c = qMin(maxUnwindStack(), m_currentUnwind.sample->branchStack().size()); i < c; ++i) {
         const auto& entry = m_currentUnwind.sample->branchStack()[i];
         if (i == 0 && !reportIp(entry.to, hasBranchStack))
             return;

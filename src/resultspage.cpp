@@ -229,7 +229,7 @@ void ResultsPage::setAppPath(const QString& path)
 void ResultsPage::onJumpToCallerCallee(const Data::Symbol& symbol)
 {
     m_resultsCallerCalleePage->jumpToCallerCallee(symbol);
-    ui->resultsTabWidget->setCurrentWidget(m_resultsCallerCalleePage);    
+    ui->resultsTabWidget->setCurrentWidget(m_resultsCallerCalleePage);
 }
 
 void ResultsPage::setData(const Data::Symbol& data)

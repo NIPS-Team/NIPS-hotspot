@@ -95,8 +95,8 @@ public:
     };
 
     struct UnwindInfo {
-        UnwindInfo() : frames(0), disasmFrames(0), unwind(nullptr), sample(nullptr), maxFrames(64),
-            firstGuessedFrame(-1), isInterworking(false) {}
+        UnwindInfo() : frames(0), disasmFrames(0), unwind(nullptr), sample(nullptr), maxFrames(64), maxStack(127),
+            branchTraverse(false), firstGuessedFrame(-1), isInterworking(false) {}
 
         QHash<qint32, QHash<quint64, Dwarf_Word>> stackValues;
         QVector<qint32> frames;
@@ -104,6 +104,8 @@ public:
         PerfUnwind *unwind;
         const PerfRecordSample *sample;
         int maxFrames;
+        int maxStack;
+        bool branchTraverse;
         int firstGuessedFrame;
         bool isInterworking;
     };
@@ -157,7 +159,7 @@ public:
     PerfUnwind(QIODevice *output, const QString &systemRoot = QDir::rootPath(),
                const QString &debugPath = defaultDebugInfoPath(),
                const QString &extraLibs = QString(), const QString &appPath = QString(),
-               bool printStats = false);
+               bool printStats = false, bool branchTraverse = false);
     ~PerfUnwind();
 
     QString kallsymsPath() const { return m_kallsymsPath; }
@@ -174,6 +176,12 @@ public:
 
     int maxUnwindFrames() const { return m_currentUnwind.maxFrames; }
     void setMaxUnwindFrames(int maxUnwindFrames) { m_currentUnwind.maxFrames = maxUnwindFrames; }
+
+    int maxUnwindStack() const { return m_currentUnwind.maxStack; }
+    void setMaxUnwindStack(int maxUnwindStack) { m_currentUnwind.maxStack = maxUnwindStack; }
+
+    bool branchTraverse() const { return m_currentUnwind.branchTraverse; }
+    void setBranchTraverse(bool branchTraverse) { m_currentUnwind.branchTraverse = branchTraverse; }
 
     PerfRegisterInfo::Architecture architecture() const { return m_architecture; }
     void setArchitecture(PerfRegisterInfo::Architecture architecture)

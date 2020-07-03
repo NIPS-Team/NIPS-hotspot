@@ -593,23 +593,32 @@ struct DisassemblyResult {
     QString perfDataPath;
     // Disassembly approach code: 'symbol' - by function symbol, 'address' or default - by addresses range
     QString disasmApproach;
+    // Short branchStack resolveCallchain traverse. Concerns lbr.
+    bool branchTraverse;
+    // Unwinding method;
+    QString unwindMethod;
 
     void copy(const DisassemblyResult &orig) {
         this->perfDataPath = orig.perfDataPath;
         this->appPath = orig.appPath;
         this->extraLibPaths = orig.extraLibPaths;
+        this->branchTraverse = orig.branchTraverse;
         if (!orig.arch.isEmpty()) {
             this->arch = orig.arch;
         }
         if (!orig.disasmApproach.isEmpty()) {
             this->disasmApproach = orig.disasmApproach;
         }
+        if (!orig.unwindMethod.isEmpty()) {
+            this->unwindMethod = orig.unwindMethod;
+        }
     }
 
-    void setData(QString perfDataPath, QString appPath, QString extraLibPaths, QString arch, QString disasmApproach) {
+    void setData(QString perfDataPath, QString appPath, QString extraLibPaths, QString arch, QString disasmApproach, bool branchTraverse) {
         this->perfDataPath = perfDataPath;
         this->appPath = appPath;
         this->extraLibPaths = extraLibPaths;
+        this->branchTraverse = branchTraverse;
         if (!arch.isEmpty()) {
             this->arch = arch;
         }

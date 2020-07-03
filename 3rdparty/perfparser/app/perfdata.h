@@ -23,18 +23,314 @@
 #include "perfattributes.h"
 #include "perffeatures.h"
 #include "perfheader.h"
-#include <linux/perf_event.h>
 
 #include <QIODevice>
 
-enum PerfUserEventType {
+
+enum PerfEventType {
+
+    /*
+     * If perf_event_attr.sample_id_all is set then all event types will
+     * have the sample_type selected fields related to where/when
+     * (identity) an event took place (TID, TIME, ID, STREAM_ID, CPU,
+     * IDENTIFIER) described in PERF_RECORD_SAMPLE below, it will be stashed
+     * just after the perf_event_header and the fields already present for
+     * the existing fields, i.e. at the end of the payload. That way a newer
+     * perf.data file will be supported by older perf tools, with these new
+     * optional fields being ignored.
+     *
+     * struct sample_id {
+     *    { u32           pid, tid; } && PERF_SAMPLE_TID
+     *    { u64           time;     } && PERF_SAMPLE_TIME
+     *    { u64           id;       } && PERF_SAMPLE_ID
+     *    { u64           stream_id;} && PERF_SAMPLE_STREAM_ID
+     *    { u32           cpu, res; } && PERF_SAMPLE_CPU
+     *    { u64           id;       } && PERF_SAMPLE_IDENTIFIER
+     * } && perf_event_attr::sample_id_all
+     *
+     * Note that PERF_SAMPLE_IDENTIFIER duplicates PERF_SAMPLE_ID.  The
+     * advantage of PERF_SAMPLE_IDENTIFIER is that its position is fixed
+     * relative to header.size.
+     */
+
+    /*
+     * The MMAP events record the PROT_EXEC mappings so that we can
+     * correlate userspace IPs to code. They have the following structure:
+     *
+     * struct {
+     *    struct perf_event_header    header;
+     *
+     *    u32                pid, tid;
+     *    u64                addr;
+     *    u64                len;
+     *    u64                pgoff;
+     *    char               filename[];
+     *    struct sample_id   sample_id;
+     * };
+     */
+    PERF_RECORD_MMAP              = 1,
+
+    /*
+     * struct {
+     *    struct perf_event_header    header;
+     *    u64                id;
+     *    u64                lost;
+     *    struct sample_id   sample_id;
+     * };
+     */
+    PERF_RECORD_LOST              = 2,
+
+    /*
+     * struct {
+     *    struct perf_event_header    header;
+     *
+     *    u32                pid, tid;
+     *    char               comm[];
+     *    struct sample_id   sample_id;
+     * };
+     */
+    PERF_RECORD_COMM              = 3,
+
+    /*
+     * struct {
+     *    struct perf_event_header    header;
+     *    u32                pid, ppid;
+     *    u32                tid, ptid;
+     *    u64                time;
+     *    struct sample_id   sample_id;
+     * };
+     */
+    PERF_RECORD_EXIT              = 4,
+
+    /*
+     * struct {
+     *    struct perf_event_header    header;
+     *    u64                time;
+     *    u64                id;
+     *    u64                stream_id;
+     *    struct sample_id   sample_id;
+     * };
+     */
+    PERF_RECORD_THROTTLE          = 5,
+    PERF_RECORD_UNTHROTTLE        = 6,
+
+    /*
+     * struct {
+     *    struct perf_event_header    header;
+     *    u32                pid, ppid;
+     *    u32                tid, ptid;
+     *    u64                time;
+     *    struct sample_id   sample_id;
+     * };
+     */
+    PERF_RECORD_FORK              = 7,
+
+    /*
+     * struct {
+     *    struct perf_event_header    header;
+     *    u32                pid, tid;
+     *
+     *    struct read_format values;
+     *    struct sample_id   sample_id;
+     * };
+     */
+    PERF_RECORD_READ              = 8,
+
+    /*
+     * struct {
+     *    struct perf_event_header    header;
+     *
+     *    #
+     *    # Note that PERF_SAMPLE_IDENTIFIER duplicates PERF_SAMPLE_ID.
+     *    # The advantage of PERF_SAMPLE_IDENTIFIER is that its position
+     *    # is fixed relative to header.
+     *    #
+     *
+     *    { u64            id;        } && PERF_SAMPLE_IDENTIFIER
+     *    { u64            ip;        } && PERF_SAMPLE_IP
+     *    { u32            pid, tid;  } && PERF_SAMPLE_TID
+     *    { u64            time;      } && PERF_SAMPLE_TIME
+     *    { u64            addr;      } && PERF_SAMPLE_ADDR
+     *    { u64            id;        } && PERF_SAMPLE_ID
+     *    { u64            stream_id; } && PERF_SAMPLE_STREAM_ID
+     *    { u32            cpu, res;  } && PERF_SAMPLE_CPU
+     *    { u64            period;    } && PERF_SAMPLE_PERIOD
+     *
+     *    { struct read_format values;} && PERF_SAMPLE_READ
+     *
+     *    { u64            nr,
+     *      u64            ips[nr];   } && PERF_SAMPLE_CALLCHAIN
+     *
+     *    #
+     *    # The RAW record below is opaque data wrt the ABI
+     *    #
+     *    # That is, the ABI doesn't make any promises wrt to
+     *    # the stability of its content, it may vary depending
+     *    # on event, hardware, kernel version and phase of
+     *    # the moon.
+     *    #
+     *    # In other words, PERF_SAMPLE_RAW contents are not an ABI.
+     *    #
+     *
+     *    { u32            size;
+     *      char           data[size];} && PERF_SAMPLE_RAW
+     *
+     *    { u64                   nr;
+     *      { u64 from, to, flags } lbr[nr];} && PERF_SAMPLE_BRANCH_STACK
+     *
+     *    { u64            abi; # enum perf_sample_regs_abi
+     *      u64            regs[weight(mask)]; } && PERF_SAMPLE_REGS_USER
+     *
+     *    { u64            size;
+     *      char           data[size];
+     *      u64            dyn_size;    } && PERF_SAMPLE_STACK_USER
+     *
+     *    { u64            weight;      } && PERF_SAMPLE_WEIGHT
+     *    { u64            data_src;    } && PERF_SAMPLE_DATA_SRC
+     *    { u64            transaction; } && PERF_SAMPLE_TRANSACTION
+     * };
+     */
+    PERF_RECORD_SAMPLE            = 9,
+
+    /*
+     * The MMAP2 records are an augmented version of MMAP, they add
+     * maj, min, ino numbers to be used to uniquely identify each mapping
+     *
+     * struct {
+     *    struct perf_event_header    header;
+     *
+     *    u32                pid, tid;
+     *    u64                addr;
+     *    u64                len;
+     *    u64                pgoff;
+     *    u32                maj;
+     *    u32                min;
+     *    u64                ino;
+     *    u64                ino_generation;
+     *    u32                prot, flags;
+     *    char               filename[];
+     *    struct sample_id   sample_id;
+     * };
+     */
+    PERF_RECORD_MMAP2             = 10,
+
+    /*
+     * Records a context switch in or out (flagged by
+     * PERF_RECORD_MISC_SWITCH_OUT). See also
+     * PERF_RECORD_SWITCH_CPU_WIDE.
+     *
+     * struct {
+     *    struct perf_event_header header;
+     *    struct sample_id         sample_id;
+     * };
+     */
+    PERF_RECORD_SWITCH            = 14,
+
+    /*
+     * CPU-wide version of PERF_RECORD_SWITCH with next_prev_pid and
+     * next_prev_tid that are the next (switching out) or previous
+     * (switching in) pid/tid.
+     *
+     * struct {
+     *    struct perf_event_header    header;
+     *    u32                next_prev_pid;
+     *    u32                next_prev_tid;
+     *    struct sample_id        sample_id;
+     * };
+     */
+    PERF_RECORD_SWITCH_CPU_WIDE        = 15,
+
+    /*
+     * struct {
+     *    struct perf_event_header    header;
+     *    u32                pid;
+     *    u32                tid;
+     *    u64                nr_namespaces;
+     *    { u64                dev, inode; } [nr_namespaces];
+     *    struct sample_id        sample_id;
+     * };
+     */
+    PERF_RECORD_NAMESPACES            = 16,
+
+    /*
+     * Record ksymbol register/unregister events:
+     *
+     * struct {
+     *    struct perf_event_header    header;
+     *    u64                addr;
+     *    u32                len;
+     *    u16                ksym_type;
+     *    u16                flags;
+     *    char                name[];
+     *    struct sample_id        sample_id;
+     * };
+     */
+    PERF_RECORD_KSYMBOL             = 17,
+
+    /*
+     * Record bpf events:
+     *  enum perf_bpf_event_type {
+     *    PERF_BPF_EVENT_UNKNOWN        = 0,
+     *    PERF_BPF_EVENT_PROG_LOAD    = 1,
+     *    PERF_BPF_EVENT_PROG_UNLOAD    = 2,
+     *  };
+     *
+     * struct {
+     *    struct perf_event_header    header;
+     *    u16                type;
+     *    u16                flags;
+     *    u32                id;
+     *    u8                tag[BPF_TAG_SIZE];
+     *    struct sample_id        sample_id;
+     * };
+     */
+    PERF_RECORD_BPF_EVENT           = 18,
+
+    /*
+     * struct {
+     *    struct perf_event_header    header;
+     *    u64                id;
+     *    char                path[];
+     *    struct sample_id        sample_id;
+     * };
+     */
+    PERF_RECORD_CGROUP              = 19,
+
+    PERF_RECORD_MAX,            /* non-ABI */
+
     PERF_RECORD_USER_TYPE_START     = 64,
     PERF_RECORD_HEADER_ATTR         = 64,
     PERF_RECORD_HEADER_EVENT_TYPE   = 65, /* deprecated */
     PERF_RECORD_HEADER_TRACING_DATA = 66,
     PERF_RECORD_HEADER_BUILD_ID     = 67,
     PERF_RECORD_FINISHED_ROUND      = 68,
+    PERF_RECORD_ID_INDEX            = 69,
+    PERF_RECORD_AUXTRACE_INFO       = 70,
+    PERF_RECORD_AUXTRACE            = 71,
+    PERF_RECORD_AUXTRACE_ERROR      = 72,
+    PERF_RECORD_THREAD_MAP          = 73,
+    PERF_RECORD_CPU_MAP             = 74,
+    PERF_RECORD_STAT_CONFIG         = 75,
+    PERF_RECORD_STAT                = 76,
+    PERF_RECORD_STAT_ROUND          = 77,
+    PERF_RECORD_EVENT_UPDATE        = 78,
+    PERF_RECORD_TIME_CONV           = 79,
+    PERF_RECORD_HEADER_FEATURE      = 80,
+    PERF_RECORD_COMPRESSED          = 81,
     PERF_RECORD_HEADER_MAX
+};
+/*
+ * Bits that can be set in attr.sample_type to request information
+ * in the overflow packets.
+ */
+enum perf_event_sample_format {
+    PERF_SAMPLE_REGS_USER			= 1U << 12,
+    PERF_SAMPLE_STACK_USER			= 1U << 13,
+};
+
+
+enum PERF_RECORD_MISC {
+    PERF_RECORD_MISC_SWITCH_OUT     = (1 << 13),
 };
 
 class PerfRecordSample;
