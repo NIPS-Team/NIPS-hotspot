@@ -36,6 +36,7 @@ private:
 private slots:
     void on_btnSysroot_clicked();
     void on_btnApplicationPath_clicked();
+    void on_btnTargetRoot_clicked();
     void on_btnExtraLibraryPaths_clicked();
     void on_btnDebugPaths_clicked();
     void on_btnKallsyms_clicked();

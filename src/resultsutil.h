@@ -65,6 +65,9 @@ void setupCostDelegate(Model* model, QTreeView* view)
 
 void addFilterActions(QMenu* menu, const Data::Symbol &symbol, FilterAndZoomStack* filterStack);
 
+void setupDisassemblyContextMenu(QTreeView* view);
+void copySelectedDisassembly(QTreeView *view);
+
 void setupContextMenu(QTreeView* view, int symbolRole, FilterAndZoomStack* filterStack, std::function<void(const Data::Symbol&)> callback);
 
 template<typename Model>

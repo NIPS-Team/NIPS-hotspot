@@ -67,6 +67,8 @@ ResultsPage::ResultsPage(PerfParser* parser, QWidget* parent)
     , m_timeLineDelegate(nullptr)
     , m_filterBusyIndicator(nullptr) // create after we setup the UI to keep it on top
     , m_timelineVisible(true)
+    , m_filterDisassemblyBytes(true)
+    , m_filterDisassemblyAddress(false)
 {
     m_exportMenu->setIcon(QIcon::fromTheme(QStringLiteral("document-export")));
     {
@@ -273,6 +275,39 @@ void ResultsPage::clear()
     m_filterAndZoomStack->clear();
 }
 
+/**
+ *  Remove created during Hotspot's work tmp files
+ */
+void ResultsPage::clearTmpFiles()
+{
+    m_resultsDisassemblyPage->clearTmpFiles();
+}
+
+/**
+ *  Hide instructions bytes when an argument is true
+ * @param filtered
+ */
+void ResultsPage::filterDisassemblyBytes(bool filtered)
+{
+    m_resultsDisassemblyPage->filterDisassemblyBytes(filtered);
+}
+
+/**
+ *  Hide instructions addresses when an argument is true
+ * @param filtered
+ */
+void ResultsPage::filterDisassemblyAddress(bool filtered) {
+    m_resultsDisassemblyPage->filterDisassemblyAddress(filtered);
+}
+
+/**
+ *  Switch to Intel Syntax of assembly
+ * @param intelSyntax
+ */
+void ResultsPage::switchOnIntelSyntax(bool intelSyntax) {
+    m_resultsDisassemblyPage->switchOnIntelSyntax(intelSyntax);
+}
+
 QMenu* ResultsPage::filterMenu() const
 {
     return m_filterMenu;
@@ -301,8 +336,44 @@ void ResultsPage::repositionFilterBusyIndicator()
     m_filterBusyIndicator->setGeometry(mapped);
 }
 
-void ResultsPage::setTimelineVisible(bool visible)
-{
+void ResultsPage::setTimelineVisible(bool visible) {
     m_timelineVisible = visible;
     ui->timeLineArea->setVisible(visible && ui->resultsTabWidget->currentIndex() != SUMMARY_TABINDEX);
+}
+
+/**
+ *  Getter / Setter for m_intelSyntaxDisassembly
+ * @param intelSyntax
+ */
+void ResultsPage::setIntelSyntaxDisassembly(bool intelSyntax) {
+    m_intelSyntaxDisassembly = intelSyntax;
+}
+
+bool ResultsPage::getIntelSyntaxDisassembly() const {
+    return m_intelSyntaxDisassembly;
+}
+
+/**
+ *  Getter / Setter for m_filterDisassemblyBytes
+ * @param filtered
+ */
+void ResultsPage::setFilterDisassemblyBytes(bool filtered) {
+    m_filterDisassemblyBytes = filtered;
+}
+
+bool ResultsPage::getFilterDisassemblyBytes() const {
+    return m_filterDisassemblyBytes;
+}
+/**
+ *  Getter / Setter for m_filterDisassemblyAddress
+ * @param filtered
+ */
+void ResultsPage::setFilterDisassemblyAddress(bool filtered)
+{
+    m_filterDisassemblyAddress = filtered;
+}
+
+bool ResultsPage::getFilterDisassemblyAddress() const
+{
+    return m_filterDisassemblyAddress;
 }

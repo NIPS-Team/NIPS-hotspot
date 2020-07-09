@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>639</width>
-    <height>390</height>
+    <height>441</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -19,13 +19,13 @@
   <property name="minimumSize">
    <size>
     <width>639</width>
-    <height>390</height>
+    <height>441</height>
    </size>
   </property>
   <property name="maximumSize">
    <size>
     <width>639</width>
-    <height>390</height>
+    <height>441</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -41,7 +41,7 @@
    <property name="geometry">
     <rect>
      <x>142</x>
-     <y>46</y>
+     <y>40</y>
      <width>271</width>
      <height>23</height>
     </rect>
@@ -51,13 +51,10 @@
    </property>
   </widget>
   <widget class="QWebStyleEdit" name="lineEditApplicationPath">
-   <property name="enabled">
-    <bool>false</bool>
-   </property>
    <property name="geometry">
     <rect>
      <x>142</x>
-     <y>86</y>
+     <y>80</y>
      <width>271</width>
      <height>23</height>
     </rect>
@@ -70,7 +67,7 @@
    <property name="geometry">
     <rect>
      <x>142</x>
-     <y>167</y>
+     <y>200</y>
      <width>271</width>
      <height>23</height>
     </rect>
@@ -83,7 +80,7 @@
    <property name="geometry">
     <rect>
      <x>142</x>
-     <y>206</y>
+     <y>240</y>
      <width>271</width>
      <height>23</height>
     </rect>
@@ -96,7 +93,7 @@
    <property name="geometry">
     <rect>
      <x>142</x>
-     <y>246</y>
+     <y>280</y>
      <width>271</width>
      <height>23</height>
     </rect>
@@ -109,9 +106,9 @@
    <property name="geometry">
     <rect>
      <x>18</x>
-     <y>47</y>
+     <y>36</y>
      <width>120</width>
-     <height>20</height>
+     <height>23</height>
     </rect>
    </property>
    <property name="text">
@@ -122,61 +119,61 @@
    <property name="geometry">
     <rect>
      <x>18</x>
-     <y>87</y>
+     <y>76</y>
      <width>120</width>
-     <height>20</height>
+     <height>23</height>
     </rect>
    </property>
    <property name="text">
     <string>Application Path:</string>
    </property>
   </widget>
-  <widget class="QLabel" name="label3">
+  <widget class="QLabel" name="label4">
    <property name="geometry">
     <rect>
      <x>18</x>
-     <y>167</y>
+     <y>196</y>
      <width>120</width>
-     <height>21</height>
+     <height>23</height>
     </rect>
    </property>
    <property name="text">
     <string>Extra Library Paths:</string>
    </property>
   </widget>
-  <widget class="QLabel" name="label4">
+  <widget class="QLabel" name="label5">
    <property name="geometry">
     <rect>
      <x>18</x>
-     <y>207</y>
+     <y>236</y>
      <width>120</width>
-     <height>20</height>
+     <height>23</height>
     </rect>
    </property>
    <property name="text">
     <string>Debug Paths:</string>
    </property>
   </widget>
-  <widget class="QLabel" name="label5">
+  <widget class="QLabel" name="label6">
    <property name="geometry">
     <rect>
      <x>18</x>
-     <y>247</y>
+     <y>276</y>
      <width>120</width>
-     <height>20</height>
+     <height>23</height>
     </rect>
    </property>
    <property name="text">
     <string>Kallsyms:</string>
    </property>
   </widget>
-  <widget class="QLabel" name="label6">
+  <widget class="QLabel" name="label7">
    <property name="geometry">
     <rect>
      <x>18</x>
-     <y>287</y>
+     <y>316</y>
      <width>120</width>
-     <height>20</height>
+     <height>23</height>
     </rect>
    </property>
    <property name="text">
@@ -187,7 +184,7 @@
    <property name="geometry">
     <rect>
      <x>420</x>
-     <y>46</y>
+     <y>40</y>
      <width>80</width>
      <height>23</height>
     </rect>
@@ -197,13 +194,10 @@
    </property>
   </widget>
   <widget class="QPushButton" name="btnApplicationPath">
-   <property name="enabled">
-    <bool>false</bool>
-   </property>
    <property name="geometry">
     <rect>
      <x>420</x>
-     <y>86</y>
+     <y>80</y>
      <width>80</width>
      <height>23</height>
     </rect>
@@ -216,7 +210,7 @@
    <property name="geometry">
     <rect>
      <x>420</x>
-     <y>167</y>
+     <y>200</y>
      <width>193</width>
      <height>23</height>
     </rect>
@@ -228,21 +222,21 @@
   <widget class="QPushButton" name="btnDebugPaths">
    <property name="geometry">
     <rect>
-     <x>419</x>
-     <y>205</y>
+     <x>420</x>
+     <y>239</y>
      <width>193</width>
      <height>23</height>
     </rect>
    </property>
    <property name="text">
-    <string>Choose and Add To Paths List</string>
+    <string>Choose and Add to Paths List</string>
    </property>
   </widget>
   <widget class="QPushButton" name="btnKallsyms">
    <property name="geometry">
     <rect>
      <x>420</x>
-     <y>246</y>
+     <y>280</y>
      <width>80</width>
      <height>23</height>
     </rect>
@@ -255,7 +249,7 @@
    <property name="geometry">
     <rect>
      <x>142</x>
-     <y>286</y>
+     <y>320</y>
      <width>271</width>
      <height>23</height>
     </rect>
@@ -284,8 +278,8 @@
   <widget class="QDialogButtonBox" name="buttonBox">
    <property name="geometry">
     <rect>
-     <x>334</x>
-     <y>355</y>
+     <x>372</x>
+     <y>405</y>
      <width>166</width>
      <height>24</height>
     </rect>
@@ -294,11 +288,47 @@
     <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
    </property>
   </widget>
+  <widget class="QLabel" name="label3">
+   <property name="geometry">
+    <rect>
+     <x>18</x>
+     <y>156</y>
+     <width>120</width>
+     <height>23</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Target Root:</string>
+   </property>
+  </widget>
+  <widget class="QWebStyleEdit" name="lineEditTargetRoot">
+   <property name="geometry">
+    <rect>
+     <x>142</x>
+     <y>160</y>
+     <width>271</width>
+     <height>23</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="btnTargetRoot">
+   <property name="geometry">
+    <rect>
+     <x>420</x>
+     <y>160</y>
+     <width>80</width>
+     <height>23</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Choose</string>
+   </property>
+  </widget>
   <widget class="QCheckBox" name="checkBoxOverrideWithPerfDataPath">
    <property name="geometry">
     <rect>
-     <x>143</x>
-     <y>118</y>
+     <x>142</x>
+     <y>112</y>
      <width>16</width>
      <height>21</height>
     </rect>
@@ -313,8 +343,8 @@
   <widget class="QLabel" name="label">
    <property name="geometry">
     <rect>
-     <x>166</x>
-     <y>118</y>
+     <x>165</x>
+     <y>112</y>
      <width>241</width>
      <height>31</height>
     </rect>
@@ -337,7 +367,7 @@ data path</string>
   <tabstop>btnSysroot</tabstop>
   <tabstop>lineEditApplicationPath</tabstop>
   <tabstop>btnApplicationPath</tabstop>
-  <tabstop>checkBoxOverrideWithPerfDataPath</tabstop>
+  <tabstop>lineEditTargetRoot</tabstop>
   <tabstop>lineEditExtraLibraryPaths</tabstop>
   <tabstop>btnExtraLibraryPaths</tabstop>
   <tabstop>lineEditDebugPaths</tabstop>

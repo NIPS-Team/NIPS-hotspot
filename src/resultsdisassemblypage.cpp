@@ -18,22 +18,143 @@
 #include "parsers/perf/perfparser.h"
 #include "resultsutil.h"
 
+#include "models/filterandzoomstack.h"
 #include "models/costdelegate.h"
-#include "models/hashmodel.h"
+#include "models/searchdelegate.h"
+#include "models/disassemblymodel.h"
 #include "models/topproxy.h"
 #include "models/treemodel.h"
 
 #include <QStandardItemModel>
+#include <QWheelEvent>
+#include <QToolTip>
+#include <QTextEdit>
+#include <QShortcut>
 
 ResultsDisassemblyPage::ResultsDisassemblyPage(FilterAndZoomStack *filterStack, PerfParser *parser, QWidget *parent)
-        : QWidget(parent), ui(new Ui::ResultsDisassemblyPage) {
+        : QWidget(parent), ui(new Ui::ResultsDisassemblyPage), m_noShowRawInsn(true), m_noShowAddress(false) {
     ui->setupUi(this);
 
-    connect(ui->asmView, &QAbstractItemView::doubleClicked, this,
-            &ResultsDisassemblyPage::jumpToAsmCallee);
+    ui->searchTextEdit->setPlaceholderText(QLatin1String("Search"));
+    ui->asmView->setSelectionMode(QAbstractItemView::SelectionMode::ExtendedSelection);
+    ResultsUtil::setupDisassemblyContextMenu(ui->asmView);
+    connect(ui->asmView, &QAbstractItemView::doubleClicked, this, &ResultsDisassemblyPage::jumpToAsmCallee);
+    m_origFontSize = this->font().pointSize();
+    m_filterAndZoomStack = filterStack;
+
+    m_searchDelegate = new SearchDelegate(ui->asmView);
+    ui->asmView->setItemDelegate(m_searchDelegate);
+
+    connect(ui->searchTextEdit, &QTextEdit::textChanged, this, &ResultsDisassemblyPage::searchTextAndHighlight);
+
+    connect(ui->asmView, &QAbstractItemView::clicked, this, &ResultsDisassemblyPage::onItemClicked);
+
+    auto shortcut = new QShortcut(QKeySequence(QLatin1String("Ctrl+A")), ui->asmView);
+    QObject::connect(shortcut, &QShortcut::activated, [this]() {
+        this->selectAll();
+    });
 }
 
 ResultsDisassemblyPage::~ResultsDisassemblyPage() = default;
+
+/**
+ *  Select all handler
+ */
+void ResultsDisassemblyPage::selectAll()
+{
+    ui->asmView->setSelectionMode(QAbstractItemView::SelectionMode::ExtendedSelection);
+    ui->asmView->selectAll();
+    m_searchDelegate->setSelectedIndexes(ui->asmView->selectionModel()->selectedIndexes());
+    emit model->dataChanged(QModelIndex(), QModelIndex());
+}
+
+/**
+ *  Select one item handler
+ * @param index
+ */
+void ResultsDisassemblyPage::onItemClicked(const QModelIndex &index)
+{
+    ui->asmView->setSelectionMode(QAbstractItemView::SelectionMode::ExtendedSelection);
+    m_searchDelegate->setSelectedIndexes(ui->asmView->selectionModel()->selectedIndexes());
+    emit model->dataChanged(QModelIndex(), QModelIndex());
+}
+
+/**
+ *  Search text (taken from text editor Search) in Disassembly output and highlight found.
+ */
+void ResultsDisassemblyPage::searchTextAndHighlight() {
+    ui->asmView->setSelectionMode(QAbstractItemView::SelectionMode::SingleSelection);
+    ui->asmView->setAllColumnsShowFocus(true);
+
+    QString text = ui->searchTextEdit->toPlainText();
+    m_searchDelegate->setSearchText(text);
+    emit model->dataChanged(QModelIndex(), QModelIndex());
+}
+
+/**
+ *  Override QWidget::wheelEvent
+ * @param event
+ */
+void ResultsDisassemblyPage::wheelEvent(QWheelEvent *event) {
+    if (event->modifiers() == Qt::ControlModifier) {
+        zoomFont(event);
+    }
+}
+
+/**
+ *  Change font size depending on mouse wheel movement
+ * @param event
+ */
+void ResultsDisassemblyPage::zoomFont(QWheelEvent *event) {
+    QFont curFont = this->font();
+    curFont.setPointSize(curFont.pointSize() + event->delta() / 100);
+
+    int fontSize = (curFont.pointSize() / (double) m_origFontSize) * 100;
+    this->setFont(curFont);
+    this->setToolTip(QLatin1String("Zoom: ") + QString::number(fontSize) + QLatin1String("%"));
+
+    QFont textEditFont = curFont;
+    textEditFont.setPointSize(m_origFontSize);
+    ui->searchTextEdit->setFont(textEditFont);
+}
+
+/**
+ *  Remove created during Hotspot's work tmp files
+ */
+void ResultsDisassemblyPage::clearTmpFiles() {
+    for (int i = 0; i < m_tmpAppList.size(); i++) {
+        QString tmpFileName = m_tmpAppList.at(i);
+        if (QFile::exists(tmpFileName))
+            QFile(tmpFileName).remove();
+    }
+}
+
+/**
+ *  Hide instruction bytes when an argument is true
+ * @param filtered
+ */
+void ResultsDisassemblyPage::filterDisassemblyBytes(bool filtered) {
+    setNoShowRawInsn(filtered);
+    resetDisassembly();
+}
+
+/**
+ *  Hide instruction address when an argument is true
+ * @param filtered
+ */
+void ResultsDisassemblyPage::filterDisassemblyAddress(bool filtered) {
+    setNoShowAddress(filtered);
+    resetDisassembly();
+}
+
+/**
+ *
+ * @param intelSyntax
+ */
+void ResultsDisassemblyPage::switchOnIntelSyntax(bool intelSyntax) {
+    setIntelSyntaxDisassembly(intelSyntax);
+    resetDisassembly();
+}
 
 /**
  *  Clear
@@ -67,10 +188,10 @@ void ResultsDisassemblyPage::setAsmViewModel(QStandardItemModel *model, int numT
  *  Produce and show disassembly with 'objdump' depending on passed value through option --disasm-approach=<value>
  */
 void ResultsDisassemblyPage::showDisassembly() {
-    if (m_disasmApproach.isEmpty() || m_disasmApproach.startsWith(QLatin1String("address"))) {
-        showDisassemblyByAddressRange();
-    } else {
+    if (m_disasmApproach.isEmpty() || m_disasmApproach.startsWith(QLatin1String("symbol"))) {
         showDisassemblyBySymbol();
+    } else {
+        showDisassemblyByAddressRange();
     }
 }
 
@@ -83,10 +204,9 @@ void ResultsDisassemblyPage::showDisassemblyBySymbol() {
         clear();
     }
 
-    m_action = Action::Disassembly;
     // Call objdump with arguments: mangled name of function and binary file
     QString processName =
-            m_objdump + QLatin1String(" --disassemble=") + m_curSymbol.mangled + QLatin1String(" ") + m_curSymbol.path;
+            m_objdump + QLatin1String(" --disassemble=") + m_curSymbol.mangled + QLatin1String(" ") + m_curAppPath;
 
     showDisassembly(processName);
 }
@@ -100,25 +220,68 @@ void ResultsDisassemblyPage::showDisassemblyByAddressRange() {
         clear();
     }
 
-    m_action = Action::Disassembly;
     // Call objdump with arguments: addresses range and binary file
     QString processName =
             m_objdump + QLatin1String(" -d --start-address=0x") + QString::number(m_curSymbol.relAddr, 16) +
             QLatin1String(" --stop-address=0x") +
             QString::number(m_curSymbol.relAddr + m_curSymbol.size, 16) +
-            QLatin1String(" ") + m_curSymbol.path;
+            QLatin1String(" ") + m_curAppPath;
 
     // Workaround for the case when symbol size is equal to zero
     if (m_curSymbol.size == 0) {
         processName =
                 m_objdump + QLatin1String(" --disassemble=") + m_curSymbol.mangled + QLatin1String(" ") +
-                m_curSymbol.path;
+                m_curAppPath;
     }
     showDisassembly(processName);
 }
 
 /**
- *   Run processName command in QProcess and diagnoses some cases
+ *  Compute installed objdump version. If it is less than required 2.32 then Disassembly item is disabled.
+ * @return
+ */
+void ResultsDisassemblyPage::getObjdumpVersion(QByteArray &processOutput) {
+    QProcess versionProcess;
+    QString processVersionName = m_objdump + QLatin1String(" -v");
+    versionProcess.start(processVersionName);
+    if (versionProcess.waitForStarted() && versionProcess.waitForFinished()) {
+        QByteArray versionLine = versionProcess.readLine();
+        QString version = QString::fromStdString(versionLine.toStdString());
+
+        QRegExp rx(QLatin1String("\\d+\\.\\d+"));
+        int pos = rx.lastIndexIn(version);
+        m_objdumpVersion = rx.capturedTexts().at(0);
+        if (m_objdumpVersion.toFloat() < 2.32) {
+            m_filterAndZoomStack->actions().disassembly->setEnabled(false);
+            processOutput = QByteArray("Version of objdump should be >= 2.32. You use objdump with version ") +
+                            m_objdumpVersion.toUtf8();
+        }
+    }    
+}
+
+/**
+ *  Call 'perf annotate -v --stdio' when 'perf annotate' returned empty output
+ * @param processName
+ * @return
+ */
+QByteArray ResultsDisassemblyPage::processPerfAnnotateDiag(QString processName) {
+    QByteArray processOutput = QByteArray();
+    QProcess asmProcess;
+    asmProcess.setReadChannelMode(QProcess::MergedChannels);
+    asmProcess.start(processName);
+
+    bool started = asmProcess.waitForStarted();
+    bool finished = asmProcess.waitForFinished();
+    if (started && finished) {
+        QByteArray buffer;
+        buffer.append(asmProcess.readAll());
+        processOutput = buffer.data();
+    }
+    return processOutput;
+}
+
+/**
+ * Run processName command in QProcess and diagnoses some cases
  * @param processName
  * @return
  */
@@ -156,6 +319,14 @@ QByteArray ResultsDisassemblyPage::processDisassemblyGenRun(QString processName)
         if (processOutput.isEmpty()) {
             processOutput = QByteArray("Empty output of command ");
             processOutput += processName.toUtf8();
+
+            if (m_objdumpVersion.isEmpty() && (m_action == Action::Disassembly)) {
+                getObjdumpVersion(processOutput);
+            }
+            if (m_action == Action::Annotate) {
+                QByteArray subProcessOutput = processPerfAnnotateDiag(processName + QLatin1String(" -v --stdio "));
+                processOutput += QByteArray("\n") + subProcessOutput;
+            }
         }
     }
     return processOutput;
@@ -165,6 +336,13 @@ QByteArray ResultsDisassemblyPage::processDisassemblyGenRun(QString processName)
  *  Produce disassembler with 'objdump' and output to Disassembly tab
  */
 void ResultsDisassemblyPage::showDisassembly(QString processName) {
+    m_action = Action::Disassembly;
+    if (m_noShowRawInsn)
+        processName += QLatin1String(" --no-show-raw-insn ");
+
+    if (m_intelSyntaxDisassembly)
+        processName += QLatin1String(" -M intel ");
+
     QTemporaryFile m_tmpFile;
 
     if (m_tmpFile.open()) {
@@ -175,7 +353,7 @@ void ResultsDisassemblyPage::showDisassembly(QString processName) {
 
     if (m_tmpFile.open()) {
         int row = 0;
-        model = new QStandardItemModel();
+        model = new DisassemblyModel();
 
         QStringList headerList;
         headerList.append(QLatin1String("Assembly"));
@@ -193,6 +371,13 @@ void ResultsDisassemblyPage::showDisassembly(QString processName) {
             QString addrLine = asmTokens.value(0);
             QString costLine = QString();
 
+            if (m_noShowAddress) {
+                QRegExp hexMatcher(QLatin1String("[0-9A-F]+$"), Qt::CaseInsensitive);
+                if (hexMatcher.exactMatch(addrLine.trimmed())) {
+                    asmTokens.removeFirst();
+                    asmLine = asmTokens.join(QLatin1Char(':')).trimmed();
+                }
+            }
             QStandardItem *asmItem = new QStandardItem();
             asmItem->setText(asmLine);
             model->setItem(row, 0, asmItem);
@@ -220,7 +405,6 @@ void ResultsDisassemblyPage::showDisassembly(QString processName) {
                                                  QLatin1String("%") : QString();
 
                     QStandardItem *costItem = new QStandardItem(costLine);
-                    costItem->setForeground(Qt::red);
                     model->setItem(row, event + 1, costItem);
                 }
             }
@@ -240,9 +424,17 @@ void ResultsDisassemblyPage::showAnnotate() {
     }
 
     m_action = Action::Annotate;
+
     QString bareSymbol = m_curSymbol.symbol.split(QLatin1Char('('))[0];
-    QString processName = QLatin1String("perf annotate -f --asm-raw --no-source ") + bareSymbol +
+    QString processName = QLatin1String("perf annotate -f --no-source ") + bareSymbol +
+                          QLatin1String(" --objdump=") + m_objdump + m_symfs +
                           QLatin1String(" -i ") + m_perfDataPath;
+
+    if (!m_noShowRawInsn)
+        processName += QLatin1String(" --asm-raw ");
+
+    if (m_intelSyntaxDisassembly)
+        processName += QLatin1String(" -M intel ");
 
     QTemporaryFile m_tmpFile;
     if (m_tmpFile.open()) {
@@ -251,7 +443,7 @@ void ResultsDisassemblyPage::showAnnotate() {
         m_tmpFile.close();
     }
 
-    model = new QStandardItemModel();
+    model = new DisassemblyModel();
 
     QStringList headerList;
     headerList.append(QLatin1String("Assembly"));
@@ -268,10 +460,16 @@ void ResultsDisassemblyPage::showAnnotate() {
 
             if (annotateLine.isEmpty()) continue;
 
-            if (!isSymBinary)
+            if (!isSymBinary && !hasEmptyOutput)
                 hasEmptyOutput = (annotateLine.startsWith(QLatin1String("Empty output of command")) ||
                                   annotateLine.startsWith(QLatin1String("Process was not started")) ||
                                   annotateLine.startsWith(QLatin1String("Empty symbol")));
+
+            if (hasEmptyOutput) {
+                QStandardItem *annotateItem = new QStandardItem(annotateLine);
+                model->setItem(row++, 0, annotateItem);
+                continue;
+            }
 
             if (annotateLine.trimmed().startsWith(QLatin1String("Percent"))) {
                 if (annotateLine.contains(m_curSymbol.binary)) {
@@ -285,7 +483,7 @@ void ResultsDisassemblyPage::showAnnotate() {
                 }
             }
 
-            if (!isSymBinary && !hasEmptyOutput)
+            if (!isSymBinary)
                 continue;
 
             QStringList asmTokens = annotateLine.split(QLatin1Char(':'));
@@ -293,22 +491,29 @@ void ResultsDisassemblyPage::showAnnotate() {
             QString addrLine = asmTokens.value(1);
 
             asmTokens.removeAt(0);
+            if (asmTokens.size() > 1) {
+                QString prefix = m_noShowAddress ? QString() : QLatin1String("\t");
+                asmTokens[1] = prefix + asmTokens.at(1).trimmed();
+            }
+
+            if (m_noShowAddress) {
+                QRegExp hexMatcher(QLatin1String("[0-9A-F]+$"), Qt::CaseInsensitive);
+                if (hexMatcher.exactMatch(addrLine.trimmed())) {
+                    asmTokens.removeFirst();
+                }
+            }
             QString asmLine = asmTokens.join(QLatin1Char(':'));
 
             if (!addrLine.isEmpty()) {
 
                 if (!cpuLine.isEmpty() && cpuLine.toDouble() != 0) {
-                    QStandardItem *cpuItem = new QStandardItem(cpuLine + QLatin1String("%"));
-                    cpuItem->setForeground(Qt::red);
+                    QStandardItem *cpuItem = new QStandardItem(cpuLine.trimmed() + QLatin1String("%"));
                     model->setItem(row, 1, cpuItem);
                 }
 
                 QStandardItem *asmItem = new QStandardItem(asmLine);
                 model->setItem(row, 0, asmItem);
                 row++;
-            } else if (hasEmptyOutput) {
-                QStandardItem *annotateItem = new QStandardItem(annotateLine);
-                model->setItem(row, 0, annotateItem);
             }
         }
     }
@@ -324,12 +529,15 @@ void ResultsDisassemblyPage::setData(const Data::Symbol &symbol) {
     if (m_curSymbol.symbol.isEmpty()) {
         return;
     }
+
+    m_symfs.clear();
+    m_curAppPath = m_curSymbol.path;
     // If binary is not found at the specified path, use current binary file located at the application path
-    if (!QFile::exists(m_curSymbol.path) || m_arch.startsWith(QLatin1String("arm"))) {
-        m_curSymbol.path = m_appPath + QDir::separator() + m_curSymbol.binary;
+    if (!QFile::exists(m_curAppPath) || m_arch.startsWith(QLatin1String("arm"))) {
+        m_curAppPath = m_appPath + QDir::separator() + m_curSymbol.binary;
     }
     // If binary is still not found, trying to find it in extraLibPaths
-    if (!QFile::exists(m_curSymbol.path) || m_arch.startsWith(QLatin1String("arm"))) {
+    if (!QFile::exists(m_curAppPath) || m_arch.startsWith(QLatin1String("arm"))) {
         QStringList dirs = m_extraLibPaths.split(QLatin1String(":"));
         foreach (QString dir, dirs) {
             QDirIterator it(dir, QDir::Dirs, QDirIterator::Subdirectories);
@@ -338,11 +546,25 @@ void ResultsDisassemblyPage::setData(const Data::Symbol &symbol) {
                 QString dirName = it.next();
                 QString fileName = dirName + QDir::separator() + m_curSymbol.binary;
                 if (QFile::exists(fileName)) {
-                    m_curSymbol.path = fileName;
+                    m_curAppPath = fileName;
                     break;
                 }
             }
         }
+    }
+    if (!m_curSymbol.path.isEmpty() && !QFile::exists(m_curSymbol.path)) {
+        if (m_targetRoot.isEmpty()) m_targetRoot = QLatin1String("/tmp");
+
+        QString linkPath = m_targetRoot + m_curSymbol.path;
+        if (!QFile::exists(linkPath)) {
+            QDir dir(QDir::root());
+            QFileInfo linkPathInfo = QFileInfo(linkPath);
+            dir.mkpath(linkPathInfo.absolutePath());
+            QFile::copy(m_curAppPath, linkPath);
+
+            m_tmpAppList.push_back(linkPath);
+        }
+        m_symfs = QLatin1String(" --symfs=") + m_targetRoot;
     }
 }
 
@@ -352,6 +574,7 @@ void ResultsDisassemblyPage::setData(const Data::Symbol &symbol) {
 void ResultsDisassemblyPage::setData(const Data::DisassemblyResult &data) {
     m_perfDataPath = data.perfDataPath;
     m_appPath = data.appPath;
+    m_targetRoot = data.targetRoot;
     m_extraLibPaths = data.extraLibPaths;
     m_arch = data.arch.trimmed().toLower();
     m_disasmApproach = data.disasmApproach;
@@ -418,9 +641,40 @@ void ResultsDisassemblyPage::jumpToAsmCallee(QModelIndex index) {
             setData(m_callStack.pop());
         }
     }
+    resetDisassembly();
+}
+
+/**
+ *  Reset Disassembly depending on selected approach
+ */
+void ResultsDisassemblyPage::resetDisassembly() {
     if (m_action == Action::Disassembly) {
         showDisassembly();
     } else {
         showAnnotate();
     }
+}
+
+/**
+ *  Setter for m_noShowRawInsn
+ * @param noShowRawInsn
+ */
+void ResultsDisassemblyPage::setNoShowRawInsn(bool noShowRawInsn) {
+    m_noShowRawInsn = noShowRawInsn;
+}
+
+/**
+ *  Setter for m_noShowAddress
+ * @param noShowAddress
+ */
+void ResultsDisassemblyPage::setNoShowAddress(bool noShowAddress) {
+    m_noShowAddress = noShowAddress;
+}
+
+/**
+ *  Setter for m_intelSyntaxDisassembly
+ * @param intelSyntax
+ */
+void ResultsDisassemblyPage::setIntelSyntaxDisassembly(bool intelSyntax) {
+    m_intelSyntaxDisassembly = intelSyntax;
 }

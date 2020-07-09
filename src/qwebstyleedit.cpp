@@ -5,11 +5,6 @@
 // Widget inherited from LineEdit that was updated with grayed text functionality
 QWebStyleEdit::QWebStyleEdit(QWidget * parent,QString grText):QLineEdit(parent)
 {
-    // Background and foreground colors for edited text and grayed text
-    textBGColor = palette().color(QPalette::Base);
-    grTextBGColor = palette().color(QPalette::Base);
-    textFGColor = palette().color(QPalette::Text);
-    grTextFGColor = palette().color(QPalette::Midlight);
     // When the control is created the modified flag is set to false
     modified = false;
     // Set initial grayed text from constructor parameters
@@ -115,4 +110,3 @@ void QWebStyleEdit::setTextDisabled() {
     setDisabled(true);
     setForegroundColor(grTextFGColor);
 }
-

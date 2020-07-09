@@ -15,6 +15,7 @@ SettingsDialog::SettingsDialog(QWidget* parent) :
     ui->label4->setAlignment(Qt::AlignRight | Qt::AlignBottom);
     ui->label5->setAlignment(Qt::AlignRight | Qt::AlignBottom);
     ui->label6->setAlignment(Qt::AlignRight | Qt::AlignBottom);
+    ui->label7->setAlignment(Qt::AlignRight | Qt::AlignBottom);
 
     // Set text for each LineEdit from corresponding variables in MainWindow class instance
     ui->lineEditSysroot->setGrayedText(QLatin1String("local machine"));
@@ -39,6 +40,10 @@ SettingsDialog::SettingsDialog(QWidget* parent) :
         ui->lineEditApplicationPath->setText(m_appPath);
         ui->lineEditApplicationPath->setTextEnabled();
     }
+
+    ui->lineEditTargetRoot->setGrayedText(QLatin1String("auto-detect"));
+    ui->lineEditTargetRoot->setToolTip(QLatin1String("Target machine path"));
+    ui->lineEditTargetRoot->setText(mainWindow->getTargetRoot());
 
     ui->lineEditExtraLibraryPaths->setGrayedText(QLatin1String("empty"));
     ui->lineEditExtraLibraryPaths->setToolTip(QLatin1String("List of colon-separated paths that contain additional libraries."));
@@ -80,6 +85,9 @@ void SettingsDialog::on_btnSysroot_clicked() {
 void SettingsDialog::on_btnApplicationPath_clicked() {
     chooseDirectoryAndCopyToLineEdit(ui->lineEditApplicationPath);
 }
+void SettingsDialog::on_btnTargetRoot_clicked() {
+    chooseDirectoryAndCopyToLineEdit((ui->lineEditTargetRoot));
+}
 void SettingsDialog::on_btnExtraLibraryPaths_clicked() {
     chooseDirectoryAndAddToLineEdit(ui->lineEditExtraLibraryPaths);
 }
@@ -101,7 +109,6 @@ void SettingsDialog::on_checkBoxOverrideWithPerfDataPath_clicked() {
         ui->lineEditApplicationPath->setTextEnabled();
         ui->btnApplicationPath->setEnabled(true);
     }
-
 }
 
 void SettingsDialog::chooseDirectoryAndCopyToLineEdit(QWebStyleEdit* qWebStyleEdit) {
@@ -136,6 +143,7 @@ void SettingsDialog::on_buttonBox_clicked(QAbstractButton * button) {
         sArch = sArch == QLatin1String("auto-detect") ? QLatin1String("") : sArch;
         // Save architecture to the MainWindow class instance variable
         mainWindow->setArch(sArch);
+        mainWindow->setTargetRoot(ui->lineEditTargetRoot->text());
         mainWindow->setOverrideAppPathWithPerfDataPath(ui->checkBoxOverrideWithPerfDataPath->isChecked());
     }
     close();

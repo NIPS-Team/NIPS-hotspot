@@ -72,13 +72,25 @@ public slots:
     void onJumpToAnnotate();
     void setData(const Data::Symbol& data);
     void setData(const Data::DisassemblyResult& data);
+    void clearTmpFiles();
     void setTimelineVisible(bool visible);
+    // Methods to filter Disassembly output
+    void filterDisassemblyBytes(bool filtered);
+    void filterDisassemblyAddress(bool filtered);
+    // Method to change assembly syntax
+    void switchOnIntelSyntax(bool intelSyntax);
 
+    // Setters / Getters
+    void setFilterDisassemblyBytes(bool filtered);
+    bool getFilterDisassemblyBytes() const;
+    void setFilterDisassemblyAddress(bool filtered);
+    bool getFilterDisassemblyAddress() const;
+    void setIntelSyntaxDisassembly(bool intelSyntax);
+    bool getIntelSyntaxDisassembly() const;
 signals:
-    void navigateToCode(const QString& url, int lineNumber, int columnNumber);
-
+    void navigateToCode(const QString &url, int lineNumber, int columnNumber);
 private:
-    bool eventFilter(QObject* watched, QEvent* event) override;
+    bool eventFilter(QObject *watched, QEvent *event) override;
     void repositionFilterBusyIndicator();
 
     QScopedPointer<Ui::ResultsPage> ui;
@@ -95,4 +107,7 @@ private:
     TimeLineDelegate* m_timeLineDelegate;
     QWidget* m_filterBusyIndicator;
     bool m_timelineVisible;
+    bool m_filterDisassemblyBytes;
+    bool m_filterDisassemblyAddress;
+    bool m_intelSyntaxDisassembly;
 };

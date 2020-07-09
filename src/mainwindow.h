@@ -54,13 +54,14 @@ public:
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow();
     QString getSysroot() const;
+    QString getAppPath() const;
     QString getApplicationPath() const;
+    QString getPerfDataPath() const;
+    bool getOverrideAppPathWithPerfDataPath() const;
+    QString getTargetRoot() const;
     QString getKallsyms() const;
     QString getDebugPaths() const;
     QString getExtraLibPaths() const;
-    QString getAppPath() const;
-    QString getPerfDataPath() const;
-    bool getOverrideAppPathWithPerfDataPath() const;
     QString getArch() const;
 
 public slots:
@@ -71,6 +72,7 @@ public slots:
     void setAppPath(const QString& path);
     void setPerfDataPath(const QString& path);
     void setOverrideAppPathWithPerfDataPath(bool);
+    void setTargetRoot(const QString& path);
     void setArch(const QString& arch);
     void setDisasmApproach(const QString& disasmApproach);
     void setVerbose(const QString& verbose);
@@ -107,6 +109,9 @@ private:
     void closeEvent(QCloseEvent* event) override;
     void setupCodeNavigationMenu();
     void setupPathSettingsMenu();
+    void setupFilterDisassemblyMenu();
+
+    void setupViewMenu();
 
     QScopedPointer<Ui::MainWindow> ui;
     PerfParser* m_parser;
@@ -125,6 +130,9 @@ private:
     QString m_perfDataPath;
     // App Path will be overridden with perf data path
     bool m_overrideAppPathWithPerfDataPath;
+    // Path to the copy of file system of the target machine
+    QString m_targetRoot;
+    // Architecture
     QString m_arch;
     // Disassembly approach code: 'symbol' - by function symbol, 'address' or default - by addresses range
     QString m_disasmApproach;

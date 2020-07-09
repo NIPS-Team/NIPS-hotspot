@@ -993,7 +993,6 @@ public:
             event.cost = sampleCost.cost;
             event.type = attributeIdsToCostIds.value(sampleCost.attributeId, -1);
             event.stackId = internStack(sample.frames);
-            event.disasmStackId = internStack(sample.disasmFrames);
             event.cpuId = sample.cpu;
             thread->events.push_back(event);
             cpu.events.push_back(event);
@@ -1308,8 +1307,8 @@ PerfParser::~PerfParser() = default;
 
 void PerfParser::startParseFile(const QString& path, const QString& sysroot, const QString& kallsyms,
                                 const QString& debugPaths, const QString& extraLibPaths, const QString& appPath,
-                                const QString& arch, const QString& disasmApproach, const QString& verbose,
-                                const QString& maxStack, const QString& branchTraverse)
+                                const QString& targetRoot, const QString& arch, const QString& disasmApproach,
+                                const QString& verbose, const QString& maxStack, const QString& branchTraverse)
 {
     Q_ASSERT(!m_isParsing);
 
@@ -1370,7 +1369,7 @@ void PerfParser::startParseFile(const QString& path, const QString& sysroot, con
     m_callerCalleeResults = {};
     m_events = {};
     m_disassemblyResult = {};
-    m_disassemblyResult.setData(path, appPath, extraLibPaths, arch, disasmApproach, !branchTraverse.isEmpty());
+    m_disassemblyResult.setData(path, appPath, targetRoot, extraLibPaths, arch, disasmApproach, !branchTraverse.isEmpty());
 
     emit parsingStarted();
     using namespace ThreadWeaver;
@@ -1572,8 +1571,7 @@ void PerfParser::filterResults(const Data::FilterAction& filter)
                     }
 
                     QSet<Data::Symbol> recursionGuard;
-                    auto frameCallback = [&callerCallee, &recursionGuard, &event,
-                                          numCosts](const Data::Symbol& symbol, const Data::Location& location) {
+                    auto frameCallback = [&callerCallee, &recursionGuard, &event, numCosts](const Data::Symbol& symbol, const Data::Location& location) {
                         addCallerCalleeEvent(symbol, location, event.type, event.cost, &recursionGuard, &callerCallee,
                                              numCosts);
                     };
