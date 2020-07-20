@@ -54,6 +54,7 @@ public:
         QAction* filterOutBySymbol = nullptr;
         QAction* disassembly = nullptr;
         QAction* annotate = nullptr;
+        QAction* fullUnwind = nullptr;
     };
 
     Actions actions() const;

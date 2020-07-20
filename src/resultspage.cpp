@@ -377,3 +377,18 @@ bool ResultsPage::getFilterDisassemblyAddress() const
 {
     return m_filterDisassemblyAddress;
 }
+
+QAction* ResultsPage::getFullUnwind()
+{
+    return m_filterAndZoomStack->actions().fullUnwind;
+}
+
+QWidget* ResultsPage::getCurrentTab() const
+{
+    return ui->resultsTabWidget->currentWidget();
+}
+
+void ResultsPage::selectTab(QWidget* tab)
+{
+    ui->resultsTabWidget->setCurrentWidget(tab);
+}

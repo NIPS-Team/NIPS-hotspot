@@ -62,6 +62,7 @@ public:
     void clear();
     QMenu* filterMenu() const;
     QMenu* exportMenu() const;
+    void selectTab(QWidget* tab);
 
 public slots:
     void setSysroot(const QString& path);
@@ -87,6 +88,9 @@ public slots:
     bool getFilterDisassemblyAddress() const;
     void setIntelSyntaxDisassembly(bool intelSyntax);
     bool getIntelSyntaxDisassembly() const;
+    QAction* getFullUnwind();
+    QWidget* getCurrentTab() const;
+
 signals:
     void navigateToCode(const QString &url, int lineNumber, int columnNumber);
 private:

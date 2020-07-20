@@ -271,7 +271,7 @@ QByteArray ResultsDisassemblyPage::processPerfAnnotateDiag(QString processName) 
     asmProcess.start(processName);
 
     bool started = asmProcess.waitForStarted();
-    bool finished = asmProcess.waitForFinished();
+    bool finished = asmProcess.waitForFinished(MSECS_PROCESS);
     if (started && finished) {
         QByteArray buffer;
         buffer.append(asmProcess.readAll());
@@ -294,7 +294,7 @@ QByteArray ResultsDisassemblyPage::processDisassemblyGenRun(QString processName)
         asmProcess.start(processName);
 
         bool started = asmProcess.waitForStarted();
-        bool finished = asmProcess.waitForFinished();
+        bool finished = asmProcess.waitForFinished(MSECS_PROCESS);
         if (!started || !finished) {
             if (!started) {
                 if (m_action == Action::Disassembly) {
