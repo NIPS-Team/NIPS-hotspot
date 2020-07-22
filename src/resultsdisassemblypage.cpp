@@ -249,7 +249,6 @@ void ResultsDisassemblyPage::getObjdumpVersion(QByteArray &processOutput) {
         QString version = QString::fromStdString(versionLine.toStdString());
 
         QRegExp rx(QLatin1String("\\d+\\.\\d+"));
-        int pos = rx.lastIndexIn(version);
         m_objdumpVersion = rx.capturedTexts().at(0);
         if (m_objdumpVersion.toFloat() < 2.32) {
             m_filterAndZoomStack->actions().disassembly->setEnabled(false);
@@ -309,6 +308,7 @@ QByteArray ResultsDisassemblyPage::processDisassemblyGenRun(QString processName)
                     processOutput = QByteArray(
                             "Process was not started. Probably command 'perf' not found, but can be installed with 'apt install linux-tools-common'");
                 }
+                m_searchDelegate->setDiagnosticStyle(true);
             } else {
                 return processOutput;
             }
@@ -327,6 +327,7 @@ QByteArray ResultsDisassemblyPage::processDisassemblyGenRun(QString processName)
                 QByteArray subProcessOutput = processPerfAnnotateDiag(processName + QLatin1String(" -v --stdio "));
                 processOutput += QByteArray("\n") + subProcessOutput;
             }
+            m_searchDelegate->setDiagnosticStyle(true);
         }
     }
     return processOutput;
@@ -566,6 +567,7 @@ void ResultsDisassemblyPage::setData(const Data::Symbol &symbol) {
         }
         m_symfs = QLatin1String(" --symfs=") + m_targetRoot;
     }
+    m_searchDelegate->setDiagnosticStyle(false);
 }
 
 /**
@@ -586,6 +588,7 @@ void ResultsDisassemblyPage::setData(const Data::DisassemblyResult &data) {
         m_arch = QLatin1String("armv8");
         m_objdump = QLatin1String("aarch64-linux-gnu-objdump");
     }
+    m_searchDelegate->setArch(m_arch);
 }
 
 /**
