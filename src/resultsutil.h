@@ -65,8 +65,10 @@ void setupCostDelegate(Model* model, QTreeView* view)
 
 void addFilterActions(QMenu* menu, const Data::Symbol &symbol, FilterAndZoomStack* filterStack);
 
-void setupDisassemblyContextMenu(QTreeView* view);
+void setupDisassemblyContextMenu(QTreeView* view, int origFontSize);
 void copySelectedDisassembly(QTreeView *view);
+void exportToCSVDisassembly(QTreeView *view);
+void zoomFont(QTreeView *view, int origFontSize, int delta);
 
 void setupContextMenu(QTreeView* view, int symbolRole, FilterAndZoomStack* filterStack, std::function<void(const Data::Symbol&)> callback);
 

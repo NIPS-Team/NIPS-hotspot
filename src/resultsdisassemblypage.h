@@ -65,6 +65,9 @@ public:
     void onItemClicked(const QModelIndex &index);
     void selectAll();
     QByteArray processPerfAnnotateDiag(QString processName);
+    Data::Symbol getCalleeSymbol(QString asmLine);
+    void returnToCaller();
+    void setupDisassemblyContextMenu(QTreeView *view, int origFontSize);
 
 signals:
     void doubleClicked(QModelIndex);
@@ -116,6 +119,14 @@ private:
     QString m_objdumpVersion;
     // Search delegate
     SearchDelegate *m_searchDelegate;
+    // Map of Callees which can be Disassemblied
+    QHash<int, Data::Symbol> m_callees;
+    // Opcode of call
+    QString opCodeCall;
+    // Opcode of return
+    QString opCodeReturn;
+    // m_callees should be filled once for selected symbol
+    bool m_calleesProcessed;
     // Setter for m_noShowRawInsn
     void setNoShowRawInsn(bool noShowRawInsn);
     // Setter for m_noShowAddress

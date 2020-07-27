@@ -41,6 +41,7 @@ void SearchDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option
             Highlighter *highlighter = new Highlighter(document);
             highlighter->setSearchText(m_searchText);
             highlighter->setArch(m_arch);
+            highlighter->setCallee(m_callees.contains(index.row()));
             highlighter->setDiagnosticStyle(m_diagnosticStyle);
             highlighter->setHighlightColor(option.palette.highlight());
 

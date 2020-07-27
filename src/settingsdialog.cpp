@@ -16,6 +16,7 @@ SettingsDialog::SettingsDialog(QWidget* parent) :
     ui->label5->setAlignment(Qt::AlignRight | Qt::AlignBottom);
     ui->label6->setAlignment(Qt::AlignRight | Qt::AlignBottom);
     ui->label7->setAlignment(Qt::AlignRight | Qt::AlignBottom);
+    ui->label8->setAlignment(Qt::AlignRight | Qt::AlignBottom);
 
     // Set text for each LineEdit from corresponding variables in MainWindow class instance
     ui->lineEditSysroot->setGrayedText(QLatin1String("local machine"));
@@ -64,6 +65,17 @@ SettingsDialog::SettingsDialog(QWidget* parent) :
     if (0 <= itemIndex && itemIndex < ui->comboBoxArchitecture->count())
         // Restore the text of current item in combobox by index
         ui->comboBoxArchitecture->setCurrentIndex(itemIndex);
+
+    ui->comboBoxMaxStack->setValidator(new QIntValidator());
+    ui->comboBoxMaxStack->setToolTip(QLatin1String("Maximum size of callchain and branchStack."));
+
+    QString maxStack = mainWindow->getMaxStack();
+    if (!maxStack.isEmpty()) {
+        if (maxStack == infinityValue) {
+            maxStack = infinityText;
+        }
+        ui->comboBoxMaxStack->setCurrentText(maxStack);
+    }
 }
 
 QString SettingsDialog::chooseDirectory()
@@ -145,6 +157,12 @@ void SettingsDialog::on_buttonBox_clicked(QAbstractButton * button) {
         mainWindow->setArch(sArch);
         mainWindow->setTargetRoot(ui->lineEditTargetRoot->text());
         mainWindow->setOverrideAppPathWithPerfDataPath(ui->checkBoxOverrideWithPerfDataPath->isChecked());
+
+        if (ui->comboBoxMaxStack->lineEdit()->hasAcceptableInput()) {
+            mainWindow->setMaxStack(ui->comboBoxMaxStack->currentText());
+        } else if (ui->comboBoxMaxStack->currentText().compare(infinityText, Qt::CaseInsensitive) == 0) {
+            mainWindow->setMaxStack(infinityValue);
+        }
     }
     close();
 }
