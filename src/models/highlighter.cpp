@@ -45,7 +45,7 @@ void Highlighter::highlightBlock(const QString &text) {
     searchFormat.setForeground(Qt::white);
     searchFormat.setBackground(m_highlightColor);
     const QString searchPatterns[] = {
-            m_searchText
+        QRegularExpression::escape(m_searchText)
     };
     for (const QString &pattern : searchPatterns) {
         rule.pattern = QRegularExpression(pattern);
