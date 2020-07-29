@@ -68,6 +68,7 @@ public:
     Data::Symbol getCalleeSymbol(QString asmLine);
     void returnToCaller();
     void setupDisassemblyContextMenu(QTreeView *view, int origFontSize);
+    void setOpcodes(bool intelSyntax);
 
 signals:
     void doubleClicked(QModelIndex);

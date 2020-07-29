@@ -149,15 +149,23 @@ void ResultsDisassemblyPage::filterDisassemblyAddress(bool filtered) {
 }
 
 /**
- *
+ *  Set opcodes for call and return instructions considering selected syntax
  * @param intelSyntax
  */
-void ResultsDisassemblyPage::switchOnIntelSyntax(bool intelSyntax) {
-    setIntelSyntaxDisassembly(intelSyntax);
+void ResultsDisassemblyPage::setOpcodes(bool intelSyntax) {
     opCodeCall = m_arch.startsWith(QLatin1String("arm")) ? QLatin1String("bl") :
                  (intelSyntax ? QLatin1String("call") : QLatin1String("callq"));
     opCodeReturn = m_arch.startsWith(QLatin1String("arm")) ? QLatin1String("ret") :
                    (intelSyntax ? QLatin1String("ret") : QLatin1String("retq"));
+}
+
+/**
+ *  Switch to Intel syntax and back
+ * @param intelSyntax
+ */
+void ResultsDisassemblyPage::switchOnIntelSyntax(bool intelSyntax) {
+    setIntelSyntaxDisassembly(intelSyntax);    
+    setOpcodes(intelSyntax);
     resetDisassembly();
 }
 
@@ -616,8 +624,7 @@ void ResultsDisassemblyPage::setData(const Data::DisassemblyResult &data) {
         m_objdump = QLatin1String("aarch64-linux-gnu-objdump");
     }
     m_searchDelegate->setArch(m_arch);
-    opCodeCall = m_arch.startsWith(QLatin1String("arm")) ? QLatin1String("bl") : QLatin1String("callq");
-    opCodeReturn = m_arch.startsWith(QLatin1String("arm")) ? QLatin1String("ret") : QLatin1String("retq");
+    setOpcodes(m_intelSyntaxDisassembly);
 }
 
 /**
