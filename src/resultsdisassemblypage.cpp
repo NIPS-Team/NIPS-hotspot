@@ -39,51 +39,21 @@ ResultsDisassemblyPage::ResultsDisassemblyPage(FilterAndZoomStack *filterStack, 
     ui->asmView->setSelectionMode(QAbstractItemView::SelectionMode::ExtendedSelection);
     m_origFontSize = this->font().pointSize();
     setupDisassemblyContextMenu(ui->asmView, m_origFontSize);
-    connect(ui->asmView, &QAbstractItemView::doubleClicked, this, &ResultsDisassemblyPage::jumpToAsmCallee);    
+    connect(ui->asmView, &QAbstractItemView::doubleClicked, this, &ResultsDisassemblyPage::jumpToAsmCallee);
     m_filterAndZoomStack = filterStack;
 
     m_searchDelegate = new SearchDelegate(ui->asmView);
     ui->asmView->setItemDelegate(m_searchDelegate);
 
     connect(ui->searchTextEdit, &QTextEdit::textChanged, this, &ResultsDisassemblyPage::searchTextAndHighlight);
-
-    connect(ui->asmView, &QAbstractItemView::clicked, this, &ResultsDisassemblyPage::onItemClicked);
-
-    auto shortcut = new QShortcut(QKeySequence(QLatin1String("Ctrl+A")), ui->asmView);
-    QObject::connect(shortcut, &QShortcut::activated, [this]() {
-        this->selectAll();
-    });
 }
 
 ResultsDisassemblyPage::~ResultsDisassemblyPage() = default;
 
 /**
- *  Select all handler
- */
-void ResultsDisassemblyPage::selectAll()
-{
-    ui->asmView->setSelectionMode(QAbstractItemView::SelectionMode::ExtendedSelection);
-    ui->asmView->selectAll();
-    m_searchDelegate->setSelectedIndexes(ui->asmView->selectionModel()->selectedIndexes());
-    emit model->dataChanged(QModelIndex(), QModelIndex());
-}
-
-/**
- *  Select one item handler
- * @param index
- */
-void ResultsDisassemblyPage::onItemClicked(const QModelIndex &index)
-{
-    ui->asmView->setSelectionMode(QAbstractItemView::SelectionMode::ExtendedSelection);
-    m_searchDelegate->setSelectedIndexes(ui->asmView->selectionModel()->selectedIndexes());
-    emit model->dataChanged(QModelIndex(), QModelIndex());
-}
-
-/**
  *  Search text (taken from text editor Search) in Disassembly output and highlight found.
  */
 void ResultsDisassemblyPage::searchTextAndHighlight() {
-    ui->asmView->setSelectionMode(QAbstractItemView::SelectionMode::SingleSelection);
     ui->asmView->setAllColumnsShowFocus(true);
 
     QString text = ui->searchTextEdit->toPlainText();
@@ -182,14 +152,30 @@ void ResultsDisassemblyPage::clear() {
 }
 
 /**
+ *  Resize event
+ * @param event
+ */
+void ResultsDisassemblyPage::resizeEvent(QResizeEvent *event) {
+    event->accept();
+    int columnsCount = ui->asmView->header()->count();
+    if (columnsCount > 0) {
+        ui->asmView->setColumnWidth(0, this->width() - 100 * (columnsCount - 1));
+        for (int i = 0; i < columnsCount - 1; i++) {
+            ui->asmView->setColumnWidth(i + 1, 100);
+        }
+    }
+}
+
+/**
  *  Set model to asmView and resize it's columns
  * @param model
  * @param numTypes
  */
 void ResultsDisassemblyPage::setAsmViewModel(QStandardItemModel *model, int numTypes) {
     ui->asmView->setModel(model);
-    ui->asmView->header()->setStretchLastSection(false);
-    ui->asmView->header()->setSectionResizeMode(0, QHeaderView::Stretch);
+    ui->asmView->header()->setStretchLastSection(true);
+    ui->asmView->header()->setSectionResizeMode(0, QHeaderView::Interactive);
+    ui->asmView->setColumnWidth(0, this->width() - 100 * numTypes);
     for (int event = 0; event < numTypes; event++) {
         ui->asmView->setColumnWidth(event + 1, 100);
         ui->asmView->header()->setSectionResizeMode(event + 1, QHeaderView::Interactive);
@@ -674,6 +660,34 @@ Data::Symbol ResultsDisassemblyPage::getCalleeSymbol(QString asmLine) {
     return {};
 }
 
+/**
+ *  Navigate to instruction by selected address inside Disassembly output
+ * @param index
+ * @param asmLine
+ */
+void ResultsDisassemblyPage::navigateToAddressInstruction(QModelIndex index, QString asmLine) {
+    QModelIndex selectedIndex = index;
+    bool isScrollTo = false;
+    QString addrRegExp = QLatin1String("[a-z0-9]+\\s*<");
+    QRegularExpression addrMatcher = QRegularExpression(addrRegExp);
+    QString address = QString();
+    QRegularExpressionMatchIterator matchIterator = addrMatcher.globalMatch(asmLine);
+    while (matchIterator.hasNext()) {
+        QRegularExpressionMatch match = matchIterator.next();
+        address = asmLine.mid(match.capturedStart(), match.capturedLength() - 1);
+        for (int i = 0; i < model->rowCount(); i++) {
+            QStandardItem *asmItem = model->item(i, 0);
+            if (asmItem->text().trimmed().startsWith(address.trimmed())) {
+                selectedIndex = model->index(i, 0);
+                isScrollTo = true;
+                break;
+            }
+        }
+    }    
+    ui->asmView->setCurrentIndex(selectedIndex);
+    if (isScrollTo)
+        ui->asmView->scrollTo(selectedIndex);
+}
 
 /**
  *  Slot method for double click on 'call' or 'return' instructions
@@ -681,18 +695,21 @@ Data::Symbol ResultsDisassemblyPage::getCalleeSymbol(QString asmLine) {
  *  And we go back by double click on 'return'
  */
 void ResultsDisassemblyPage::jumpToAsmCallee(QModelIndex index) {
-    QStandardItem *asmItem = model->item(index.row(), 0);    
+    QStandardItem *asmItem = model->item(index.row(), 0);
     QString asmLine = asmItem->text();
     if (m_callees.contains(index.row())) {
         m_callStack.push(m_curSymbol);
         setData(m_callees.value(index.row()));
+        resetDisassembly();
+    } else if (asmLine.contains(opCodeReturn) && !m_callStack.isEmpty()) {
+        setData(m_callStack.pop());
+        resetDisassembly();
+    } else {
+        QList<QStandardItem *> rowItems = model->takeRow(index.row());
+        model->insertRow(index.row(), rowItems);
+
+        navigateToAddressInstruction(index, asmLine);
     }
-    if (asmLine.contains(opCodeReturn)) {
-        if (!m_callStack.isEmpty()) {
-            setData(m_callStack.pop());
-        }
-    }
-    resetDisassembly();
 }
 
 /**

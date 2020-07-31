@@ -69,7 +69,8 @@ public:
     void returnToCaller();
     void setupDisassemblyContextMenu(QTreeView *view, int origFontSize);
     void setOpcodes(bool intelSyntax);
-
+    void navigateToAddressInstruction(QModelIndex index, QString asmLine);
+    void resizeEvent(QResizeEvent *event);
 signals:
     void doubleClicked(QModelIndex);
 public slots:

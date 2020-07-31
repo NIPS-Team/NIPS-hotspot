@@ -31,14 +31,6 @@ public:
         return m_arch;
     }
 
-    const QModelIndexList getSelectedIndexes() const {
-        return selectedIndexes;
-    }
-
-    void setSelectedIndexes(const QModelIndexList &selectedIndexes) {
-        SearchDelegate::selectedIndexes = selectedIndexes;
-    }
-
     void setDiagnosticStyle(bool diagnosticStyle) {
         m_diagnosticStyle = diagnosticStyle;
     }
@@ -57,7 +49,6 @@ public:
 
 private:
     QString m_searchText;
-    QModelIndexList selectedIndexes;
     CostDelegate *costDelegate;
     QHash<int, Data::Symbol> m_callees;
     QString m_arch;
