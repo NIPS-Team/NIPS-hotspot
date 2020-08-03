@@ -252,6 +252,7 @@ void ResultsDisassemblyPage::getObjdumpVersion(QByteArray &processOutput) {
         QString version = QString::fromStdString(versionLine.toStdString());
 
         QRegExp rx(QLatin1String("\\d+\\.\\d+"));
+        int pos = rx.lastIndexIn(version);
         m_objdumpVersion = rx.capturedTexts().at(0);
         if (m_objdumpVersion.toFloat() < 2.32) {
             m_filterAndZoomStack->actions().disassembly->setEnabled(false);
