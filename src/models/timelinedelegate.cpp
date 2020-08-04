@@ -428,7 +428,6 @@ bool TimeLineDelegate::eventFilter(QObject* watched, QEvent* event)
         }
 
         if (isRightButtonEvent && isFiltered) {
-            contextMenu->addAction(m_filterAndZoomStack->actions().annotate);
             contextMenu->addAction(m_filterAndZoomStack->actions().disassembly);
             contextMenu->addAction(m_filterAndZoomStack->actions().filterOut);
             contextMenu->addAction(m_filterAndZoomStack->actions().resetFilter);

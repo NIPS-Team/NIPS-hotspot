@@ -35,7 +35,6 @@ FilterAndZoomStack::FilterAndZoomStack(QObject* parent)
     : QObject(parent)
 {
     m_actions.disassembly = new QAction(QIcon::fromTheme(QStringLiteral("view-filter")), tr("Disassembly"), this);
-    m_actions.annotate = new QAction(QIcon::fromTheme(QStringLiteral("view-filter")), tr("Annotate"), this);
 
     m_actions.fullUnwind = new QAction(QIcon::fromTheme(QStringLiteral("view-filter")), tr("Callchains full unwind"), this);
 

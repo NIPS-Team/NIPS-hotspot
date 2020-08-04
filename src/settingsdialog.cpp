@@ -1,6 +1,9 @@
 #include "settingsdialog.h"
 #include "ui_settingsdialog.h"
 #include <QFileDialog>
+#include <QMessageBox>
+#include <QStringLiteral>
+
 
 SettingsDialog::SettingsDialog(QWidget* parent) :
     QDialog(parent),
@@ -68,6 +71,7 @@ SettingsDialog::SettingsDialog(QWidget* parent) :
 
     ui->comboBoxMaxStack->setValidator(new QIntValidator());
     ui->comboBoxMaxStack->setToolTip(QLatin1String("Maximum size of callchain and branchStack."));
+    ui->comboBoxMaxStack->setCompleter(nullptr);
 
     QString maxStack = mainWindow->getMaxStack();
     if (!maxStack.isEmpty()) {
@@ -76,6 +80,9 @@ SettingsDialog::SettingsDialog(QWidget* parent) :
         }
         ui->comboBoxMaxStack->setCurrentText(maxStack);
     }
+    connect(ui->comboBoxMaxStack, &QComboBox::currentTextChanged, this, [this]() {
+        maxStackChanged = true;
+    });
 }
 
 QString SettingsDialog::chooseDirectory()
@@ -162,6 +169,13 @@ void SettingsDialog::on_buttonBox_clicked(QAbstractButton * button) {
             mainWindow->setMaxStack(ui->comboBoxMaxStack->currentText());
         } else if (ui->comboBoxMaxStack->currentText().compare(infinityText, Qt::CaseInsensitive) == 0) {
             mainWindow->setMaxStack(infinityValue);
+        }
+
+        if (maxStackChanged) {
+            QMessageBox::information(this,
+                                     QStringLiteral("Max stack is changed"),
+                                     QStringLiteral("Reload to apply new max stack value")
+                                     );
         }
     }
     close();

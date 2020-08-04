@@ -494,15 +494,15 @@ void MainWindow::setupPathSettingsMenu()
 void MainWindow::setupFilterDisassemblyMenu() {
     QMenu *filterDisassemblyMenu = new QMenu(tr("Filter Disassembly View"));
 
-    auto *showFilteredDisassemblyBytesAction = filterDisassemblyMenu->addAction(tr("Show/Hide instruction bytes"));
+    auto *showFilteredDisassemblyBytesAction = filterDisassemblyMenu->addAction(tr("Hide/Show instruction bytes"));
     showFilteredDisassemblyBytesAction->setCheckable(true);
-    showFilteredDisassemblyBytesAction->setChecked(m_resultsPage->getFilterDisassemblyBytes());
+    showFilteredDisassemblyBytesAction->setChecked(true);
     showFilteredDisassemblyBytesAction->setShortcut(tr("Ctrl+B"));
     connect(showFilteredDisassemblyBytesAction, &QAction::toggled, m_resultsPage, &ResultsPage::filterDisassemblyBytes);
 
-    auto *showFilteredDisassemblyAddressAction = filterDisassemblyMenu->addAction(tr("Show/Hide instruction address"));
+    auto *showFilteredDisassemblyAddressAction = filterDisassemblyMenu->addAction(tr("Hide/Show instruction address"));
     showFilteredDisassemblyAddressAction->setCheckable(true);
-    showFilteredDisassemblyAddressAction->setChecked(m_resultsPage->getFilterDisassemblyAddress());
+    showFilteredDisassemblyAddressAction->setChecked(false);
     showFilteredDisassemblyAddressAction->setShortcut(tr("Ctrl+J"));
     connect(showFilteredDisassemblyAddressAction, &QAction::toggled, m_resultsPage,
             &ResultsPage::filterDisassemblyAddress);
@@ -512,9 +512,15 @@ void MainWindow::setupFilterDisassemblyMenu() {
 void MainWindow::setupViewMenu() {
     auto *switchDisassemblySyntaxAction = ui->viewMenu->addAction(tr("Assembly in Intel Syntax"));
     switchDisassemblySyntaxAction->setCheckable(true);
-    switchDisassemblySyntaxAction->setChecked(m_resultsPage->getIntelSyntaxDisassembly());
+    switchDisassemblySyntaxAction->setChecked(false);
     switchDisassemblySyntaxAction->setShortcut(tr("Ctrl+I"));
     connect(switchDisassemblySyntaxAction, &QAction::toggled, m_resultsPage, &ResultsPage::switchOnIntelSyntax);
+
+    auto *switchDisassemblyMethodAction = ui->viewMenu->addAction(tr("Disassembly (objdump) / Annotate (perf)"));
+    switchDisassemblyMethodAction->setCheckable(true);
+    switchDisassemblyMethodAction->setChecked(true);
+    switchDisassemblyMethodAction->setShortcut(tr("Ctrl+D"));
+    connect(switchDisassemblyMethodAction, &QAction::toggled, m_resultsPage, &ResultsPage::switchDisassemblyMethod);
 
     auto *showTimelineAction = ui->viewMenu->addAction(tr("Show Timeline"));
     showTimelineAction->setCheckable(true);

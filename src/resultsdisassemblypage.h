@@ -45,6 +45,7 @@ public:
     void filterDisassemblyBytes(bool filtered);
     void filterDisassemblyAddress(bool filtered);
     void switchOnIntelSyntax(bool intelSyntax);
+    void switchDisassemblyMethod(bool disasmMethod);
     QByteArray processDisassemblyGenRun(QString processName);
     void setAsmViewModel(QStandardItemModel *model, int numTypes);
     void showDisassembly();
@@ -62,13 +63,13 @@ public:
     void wheelEvent(QWheelEvent *event);
     void getObjdumpVersion(QByteArray &processOutput);
     void searchTextAndHighlight();
-    void onItemClicked(const QModelIndex &index);
-    void selectAll();
     QByteArray processPerfAnnotateDiag(QString processName);
     Data::Symbol getCalleeSymbol(QString asmLine);
     void returnToCaller();
+    void returnToJump();
     void setupDisassemblyContextMenu(QTreeView *view, int origFontSize);
     void setOpcodes(bool intelSyntax);
+    void setAction(bool disasmMethod);
     void navigateToAddressInstruction(QModelIndex index, QString asmLine);
     void resizeEvent(QResizeEvent *event);
 signals:
@@ -82,7 +83,7 @@ private:
     // Asm view model
     QStandardItemModel *model;
     // Call stack
-    QStack<Data::Symbol> m_callStack;
+    QStack<QMap<Data::Symbol, int>> m_callStack;
     // Perf.data path
     QString m_perfDataPath;
     // Current chosen function symbol
@@ -129,6 +130,8 @@ private:
     QString opCodeReturn;
     // m_callees should be filled once for selected symbol
     bool m_calleesProcessed;
+    // Jump instruction source
+    QStack<QModelIndex> m_addressStack;
     // Setter for m_noShowRawInsn
     void setNoShowRawInsn(bool noShowRawInsn);
     // Setter for m_noShowAddress

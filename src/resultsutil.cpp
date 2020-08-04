@@ -75,9 +75,7 @@ void addFilterActions(QMenu* menu, const Data::Symbol& symbol, FilterAndZoomStac
 {    
     auto filterActions = filterStack->actions();
     menu->addAction(filterActions.disassembly);
-    menu->addAction(filterActions.annotate);
     filterActions.disassembly->setData(QVariant::fromValue(symbol));
-    filterActions.annotate->setData(QVariant::fromValue(symbol));
     menu->addSeparator();
     if (symbol.isValid()) {
         filterActions.filterInBySymbol->setData(QVariant::fromValue(symbol));

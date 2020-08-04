@@ -67,13 +67,10 @@ ResultsPage::ResultsPage(PerfParser* parser, QWidget* parent)
     , m_timeLineDelegate(nullptr)
     , m_filterBusyIndicator(nullptr) // create after we setup the UI to keep it on top
     , m_timelineVisible(true)
-    , m_filterDisassemblyBytes(true)
-    , m_filterDisassemblyAddress(false)
 {
     m_exportMenu->setIcon(QIcon::fromTheme(QStringLiteral("document-export")));
     {
         const auto actions = m_filterAndZoomStack->actions();
-        m_filterMenu->addAction(actions.annotate);
         m_filterMenu->addAction(actions.disassembly);
         m_filterMenu->addAction(actions.filterOut);
         m_filterMenu->addAction(actions.resetFilter);
@@ -180,14 +177,6 @@ ResultsPage::ResultsPage(PerfParser* parser, QWidget* parent)
                 onJumpToDisassembly();
             });
 
-    connect(m_filterAndZoomStack->actions().annotate, &QAction::triggered,
-            this,
-            [this]() {
-                QVariant data = m_filterAndZoomStack->actions().annotate->data();
-                setData(data.value<Data::Symbol>());
-                onJumpToAnnotate();
-            });
-
     connect(m_resultsSummaryPage, &ResultsSummaryPage::jumpToCallerCallee, this, &ResultsPage::onJumpToCallerCallee);
     connect(m_resultsBottomUpPage, &ResultsBottomUpPage::jumpToCallerCallee, this, &ResultsPage::onJumpToCallerCallee);
     connect(m_resultsTopDownPage, &ResultsTopDownPage::jumpToCallerCallee, this, &ResultsPage::onJumpToCallerCallee);
@@ -249,14 +238,7 @@ void ResultsPage::onJumpToDisassembly()
 {
     ui->resultsTabWidget->addTab(m_resultsDisassemblyPage, tr("Disassembly"));
     ui->resultsTabWidget->setCurrentWidget(m_resultsDisassemblyPage);
-    m_resultsDisassemblyPage->showDisassembly();
-}
-
-void ResultsPage::onJumpToAnnotate()
-{
-    ui->resultsTabWidget->addTab(m_resultsDisassemblyPage, tr("Disassembly"));
-    ui->resultsTabWidget->setCurrentWidget(m_resultsDisassemblyPage);
-    m_resultsDisassemblyPage->showAnnotate();
+    m_resultsDisassemblyPage->resetDisassembly();
 }
 
 void ResultsPage::selectSummaryTab()
@@ -308,6 +290,14 @@ void ResultsPage::switchOnIntelSyntax(bool intelSyntax) {
     m_resultsDisassemblyPage->switchOnIntelSyntax(intelSyntax);
 }
 
+/**
+ *  Switch Disassembly method between Disassembly (objdump) and Annotate (perf annotate)
+ * @param disasmMethod
+ */
+void ResultsPage::switchDisassemblyMethod(bool disasmMethod) {   
+    m_resultsDisassemblyPage->switchDisassemblyMethod(disasmMethod);
+}
+
 QMenu* ResultsPage::filterMenu() const
 {
     return m_filterMenu;
@@ -339,43 +329,6 @@ void ResultsPage::repositionFilterBusyIndicator()
 void ResultsPage::setTimelineVisible(bool visible) {
     m_timelineVisible = visible;
     ui->timeLineArea->setVisible(visible && ui->resultsTabWidget->currentIndex() != SUMMARY_TABINDEX);
-}
-
-/**
- *  Getter / Setter for m_intelSyntaxDisassembly
- * @param intelSyntax
- */
-void ResultsPage::setIntelSyntaxDisassembly(bool intelSyntax) {
-    m_intelSyntaxDisassembly = intelSyntax;
-}
-
-bool ResultsPage::getIntelSyntaxDisassembly() const {
-    return m_intelSyntaxDisassembly;
-}
-
-/**
- *  Getter / Setter for m_filterDisassemblyBytes
- * @param filtered
- */
-void ResultsPage::setFilterDisassemblyBytes(bool filtered) {
-    m_filterDisassemblyBytes = filtered;
-}
-
-bool ResultsPage::getFilterDisassemblyBytes() const {
-    return m_filterDisassemblyBytes;
-}
-/**
- *  Getter / Setter for m_filterDisassemblyAddress
- * @param filtered
- */
-void ResultsPage::setFilterDisassemblyAddress(bool filtered)
-{
-    m_filterDisassemblyAddress = filtered;
-}
-
-bool ResultsPage::getFilterDisassemblyAddress() const
-{
-    return m_filterDisassemblyAddress;
 }
 
 QAction* ResultsPage::getFullUnwind()

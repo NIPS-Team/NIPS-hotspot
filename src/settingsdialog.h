@@ -34,6 +34,7 @@ private:
     QString m_appPath;
     const QString infinityText = QLatin1String("INF");
     const QString infinityValue = QString::number(INT_MAX);
+    bool maxStackChanged = false;
 
 private slots:
     void on_btnSysroot_clicked();

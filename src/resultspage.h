@@ -70,7 +70,6 @@ public slots:
     void onNavigateToCode(const QString& url, int lineNumber, int columnNumber);
     void onJumpToCallerCallee(const Data::Symbol& symbol);
     void onJumpToDisassembly();
-    void onJumpToAnnotate();
     void setData(const Data::Symbol& data);
     void setData(const Data::DisassemblyResult& data);
     void clearTmpFiles();
@@ -80,14 +79,8 @@ public slots:
     void filterDisassemblyAddress(bool filtered);
     // Method to change assembly syntax
     void switchOnIntelSyntax(bool intelSyntax);
-
-    // Setters / Getters
-    void setFilterDisassemblyBytes(bool filtered);
-    bool getFilterDisassemblyBytes() const;
-    void setFilterDisassemblyAddress(bool filtered);
-    bool getFilterDisassemblyAddress() const;
-    void setIntelSyntaxDisassembly(bool intelSyntax);
-    bool getIntelSyntaxDisassembly() const;
+    // Method to switch Disassembly generation method
+    void switchDisassemblyMethod(bool disasmMethod);
     QAction* getFullUnwind();
     QWidget* getCurrentTab() const;
 
@@ -111,7 +104,4 @@ private:
     TimeLineDelegate* m_timeLineDelegate;
     QWidget* m_filterBusyIndicator;
     bool m_timelineVisible;
-    bool m_filterDisassemblyBytes;
-    bool m_filterDisassemblyAddress;
-    bool m_intelSyntaxDisassembly;
 };
