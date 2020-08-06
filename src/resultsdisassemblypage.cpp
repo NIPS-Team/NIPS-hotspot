@@ -148,19 +148,27 @@ void ResultsDisassemblyPage::switchOnIntelSyntax(bool intelSyntax) {
 }
 
 /**
+ *  Clear navigation state when switch between methods to generate Disassembly
+ */
+void ResultsDisassemblyPage::clearDisasmMethodState() {
+    m_searchDelegate->setDiagnosticStyle(false);
+    m_callees.clear();
+    m_calleesProcessed = false;
+    m_callStack.clear();
+    m_addressStack.clear();
+
+    if (!m_objdumpVersion.isEmpty() && m_objdumpVersion.toFloat() < 2.32) {
+        m_filterAndZoomStack->actions().disassembly->setEnabled(m_action == Action::Annotate);
+    }
+}
+
+/**
  *  Switch Disassembly method between Disassembly (objdump) and Annotate (perf annotate)
  * @param disasmMethod
  */
 void ResultsDisassemblyPage::switchDisassemblyMethod(bool disasmMethod) {
     setAction(disasmMethod);
-
-    m_searchDelegate->setDiagnosticStyle(false);
-    m_callees.clear();
-    m_calleesProcessed = false;
-
-    if (!m_objdumpVersion.isEmpty() && m_objdumpVersion.toFloat() < 2.32) {
-        m_filterAndZoomStack->actions().disassembly->setEnabled(m_action == Action::Annotate);
-    }
+    clearDisasmMethodState();
     resetDisassembly();
 }
 
@@ -268,7 +276,7 @@ void ResultsDisassemblyPage::showDisassemblyByAddressRange() {
  *  Compute installed objdump version. If it is less than required 2.32 then Disassembly item is disabled.
  * @return
  */
-void ResultsDisassemblyPage::getObjdumpVersion(QByteArray &processOutput) {
+void ResultsDisassemblyPage::getObjdumpVersion() {
     QProcess versionProcess;
     QString processVersionName = m_objdump + QLatin1String(" -v");
     versionProcess.start(processVersionName);
@@ -281,8 +289,6 @@ void ResultsDisassemblyPage::getObjdumpVersion(QByteArray &processOutput) {
         m_objdumpVersion = rx.capturedTexts().at(0);
         if (m_objdumpVersion.toFloat() < 2.32) {
             m_filterAndZoomStack->actions().disassembly->setEnabled(false);
-            processOutput = QByteArray("Version of objdump should be >= 2.32. You use objdump with version ") +
-                            m_objdumpVersion.toUtf8();
         }
     }    
 }
@@ -349,8 +355,14 @@ QByteArray ResultsDisassemblyPage::processDisassemblyGenRun(QString processName)
             processOutput = QByteArray("Empty output of command ");
             processOutput += processName.toUtf8();
 
-            if (m_objdumpVersion.isEmpty() && (m_action == Action::Disassembly)) {
-                getObjdumpVersion(processOutput);
+            if (m_action == Action::Disassembly) {
+                if (m_objdumpVersion.isEmpty())
+                    getObjdumpVersion();
+
+                if (!m_objdumpVersion.isEmpty() && m_objdumpVersion.toFloat() < 2.32) {
+                    processOutput = QByteArray("Version of objdump should be >= 2.32. You use objdump with version ") +
+                                    m_objdumpVersion.toUtf8();
+                }
             }
             if (m_action == Action::Annotate) {
                 QByteArray subProcessOutput = processPerfAnnotateDiag(processName + QLatin1String(" -v --stdio "));
@@ -710,7 +722,7 @@ void ResultsDisassemblyPage::navigateToAddressInstruction(QModelIndex index, QSt
             if (asmItem->text().trimmed().startsWith(address.trimmed())) {
                 selectedIndex = model->index(i, 0);
                 isScrollTo = true;
-                m_addressStack.push(index);
+                m_addressStack.push(index.row());
                 break;
             }
         }
@@ -752,7 +764,8 @@ void ResultsDisassemblyPage::jumpToAsmCallee(QModelIndex index) {
  */
 void ResultsDisassemblyPage::returnToJump() {
     if (!m_addressStack.isEmpty()) {
-        QModelIndex jumpIndex = m_addressStack.pop();
+        int jumpRow = m_addressStack.pop();
+        QModelIndex jumpIndex = model->index(jumpRow, 0);
         ui->asmView->setCurrentIndex(jumpIndex);
         ui->asmView->scrollTo(jumpIndex);
     }

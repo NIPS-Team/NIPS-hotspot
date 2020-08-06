@@ -61,7 +61,7 @@ public:
     void resetCallStack();
     void zoomFont(QWheelEvent *event);
     void wheelEvent(QWheelEvent *event);
-    void getObjdumpVersion(QByteArray &processOutput);
+    void getObjdumpVersion();
     void searchTextAndHighlight();
     QByteArray processPerfAnnotateDiag(QString processName);
     Data::Symbol getCalleeSymbol(QString asmLine);
@@ -72,6 +72,7 @@ public:
     void setAction(bool disasmMethod);
     void navigateToAddressInstruction(QModelIndex index, QString asmLine);
     void resizeEvent(QResizeEvent *event);
+    void clearDisasmMethodState();
 signals:
     void doubleClicked(QModelIndex);
 public slots:
@@ -131,7 +132,7 @@ private:
     // m_callees should be filled once for selected symbol
     bool m_calleesProcessed;
     // Jump instruction source
-    QStack<QModelIndex> m_addressStack;
+    QStack<int> m_addressStack;
     // Setter for m_noShowRawInsn
     void setNoShowRawInsn(bool noShowRawInsn);
     // Setter for m_noShowAddress
