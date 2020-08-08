@@ -539,8 +539,7 @@ void MainWindow::setupViewMenu() {
     ui->viewMenu->addSeparator();
 
     QList<QAction *> actions = m_resultsPage->filterMenu()->actions();
-    // Disassembly and Annotate menu items should not be presented here
-    actions.removeFirst();
+    // Disassembly menu item should not be presented here
     actions.removeFirst();
     ui->viewMenu->addActions(actions);
     ui->viewMenu->addSeparator();

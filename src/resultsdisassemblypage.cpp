@@ -32,7 +32,7 @@
 #include <QShortcut>
 
 ResultsDisassemblyPage::ResultsDisassemblyPage(FilterAndZoomStack *filterStack, PerfParser *parser, QWidget *parent)
-        : QWidget(parent), ui(new Ui::ResultsDisassemblyPage), m_noShowRawInsn(true), m_noShowAddress(false), m_action(Action::Disassembly) {
+        : QWidget(parent), ui(new Ui::ResultsDisassemblyPage), m_noShowRawInsn(true), m_noShowAddress(false) {
     ui->setupUi(this);
 
     ui->searchTextEdit->setPlaceholderText(QLatin1String("Search"));
@@ -46,6 +46,7 @@ ResultsDisassemblyPage::ResultsDisassemblyPage(FilterAndZoomStack *filterStack, 
     ui->asmView->setItemDelegate(m_searchDelegate);
 
     connect(ui->searchTextEdit, &QTextEdit::textChanged, this, &ResultsDisassemblyPage::searchTextAndHighlight);
+    m_action = Action::Disassembly;
 }
 
 ResultsDisassemblyPage::~ResultsDisassemblyPage() = default;
@@ -157,7 +158,7 @@ void ResultsDisassemblyPage::clearDisasmMethodState() {
     m_callStack.clear();
     m_addressStack.clear();
 
-    if (!m_objdumpVersion.isEmpty() && m_objdumpVersion.toFloat() < 2.32) {
+    if (!m_objdumpVersion.isNull() && !m_objdumpVersion.isEmpty() && m_objdumpVersion.toFloat() < 2.32) {
         m_filterAndZoomStack->actions().disassembly->setEnabled(m_action == Action::Annotate);
     }
 }
