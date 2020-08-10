@@ -47,6 +47,7 @@ ResultsDisassemblyPage::ResultsDisassemblyPage(FilterAndZoomStack *filterStack, 
 
     connect(ui->searchTextEdit, &QTextEdit::textChanged, this, &ResultsDisassemblyPage::searchTextAndHighlight);
     m_action = Action::Disassembly;
+    model = new DisassemblyModel();
 }
 
 ResultsDisassemblyPage::~ResultsDisassemblyPage() = default;
@@ -658,7 +659,7 @@ void ResultsDisassemblyPage::setData(const Data::DisassemblyResult &data) {
 void ResultsDisassemblyPage::resetCallStack() {
     m_callStack.clear();
     m_addressStack.clear();
-    if (model != nullptr) {
+    if (model->rowCount() > 0) {
         ui->asmView->setCurrentIndex(model->index(0, 0));
     }
 }
