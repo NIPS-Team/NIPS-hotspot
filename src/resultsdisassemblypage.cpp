@@ -46,6 +46,7 @@ ResultsDisassemblyPage::ResultsDisassemblyPage(FilterAndZoomStack *filterStack, 
     ui->asmView->setItemDelegate(m_searchDelegate);
 
     connect(ui->searchTextEdit, &QTextEdit::textChanged, this, &ResultsDisassemblyPage::searchTextAndHighlight);
+    connect(ui->backButton, &QToolButton::clicked, this, &ResultsDisassemblyPage::backButtonClicked);
     m_action = Action::Disassembly;
     model = new DisassemblyModel();
 }
@@ -107,8 +108,10 @@ void ResultsDisassemblyPage::clearTmpFiles() {
  * @param filtered
  */
 void ResultsDisassemblyPage::filterDisassemblyBytes(bool filtered) {
+    int row = selectedRow();
     setNoShowRawInsn(filtered);
     resetDisassembly();
+    selectRow(row);
 }
 
 /**
@@ -116,8 +119,10 @@ void ResultsDisassemblyPage::filterDisassemblyBytes(bool filtered) {
  * @param filtered
  */
 void ResultsDisassemblyPage::filterDisassemblyAddress(bool filtered) {
+    int row = selectedRow();
     setNoShowAddress(filtered);
     resetDisassembly();
+    selectRow(row);
 }
 
 /**
@@ -140,13 +145,41 @@ void ResultsDisassemblyPage::setOpcodes(bool intelSyntax) {
 }
 
 /**
+ *  Return selected row
+ * @return
+ */
+int ResultsDisassemblyPage::selectedRow() {
+    return (model->rowCount() > 0) ? ui->asmView->currentIndex().row() : 0;
+}
+
+/**
+ *  Select row
+ * @param row
+ */
+void ResultsDisassemblyPage::selectRow(int row) {
+    ui->asmView->setCurrentIndex(model->index(row, 0));
+}
+
+/**
+ *  Block Back button
+ * @return
+ */
+void ResultsDisassemblyPage::blockBackButton() {
+    if (m_callStack.isEmpty() && m_addressStack.isEmpty()) {
+        ui->backButton->setEnabled(false);
+    }
+}
+
+/**
  *  Switch to Intel syntax and back
  * @param intelSyntax
  */
 void ResultsDisassemblyPage::switchOnIntelSyntax(bool intelSyntax) {
+    int row = selectedRow();
     setIntelSyntaxDisassembly(intelSyntax);    
     setOpcodes(intelSyntax);
     resetDisassembly();
+    selectRow(row);
 }
 
 /**
@@ -158,8 +191,9 @@ void ResultsDisassemblyPage::clearDisasmMethodState() {
     m_calleesProcessed = false;
     m_callStack.clear();
     m_addressStack.clear();
+    ui->backButton->setEnabled(false);
 
-    if (!m_objdumpVersion.isNull() && !m_objdumpVersion.isEmpty() && m_objdumpVersion.toFloat() < 2.32) {
+    if (!m_objdumpVersion.isEmpty() && m_objdumpVersion.toFloat() < 2.32) {
         m_filterAndZoomStack->actions().disassembly->setEnabled(m_action == Action::Annotate);
     }
 }
@@ -397,7 +431,7 @@ void ResultsDisassemblyPage::showDisassembly(QString processName) {
 
     if (m_tmpFile.open()) {
         int row = 0;
-        model = new DisassemblyModel();
+        model->clear();
 
         QStringList headerList;
         headerList.append(QLatin1String("Assembly"));
@@ -493,7 +527,7 @@ void ResultsDisassemblyPage::showAnnotate() {
         m_tmpFile.close();
     }
 
-    model = new DisassemblyModel();
+    model->clear();
 
     QStringList headerList;
     headerList.append(QLatin1String("Assembly"));
@@ -659,6 +693,7 @@ void ResultsDisassemblyPage::setData(const Data::DisassemblyResult &data) {
 void ResultsDisassemblyPage::resetCallStack() {
     m_callStack.clear();
     m_addressStack.clear();
+    ui->backButton->setEnabled(false);
     if (model->rowCount() > 0) {
         ui->asmView->setCurrentIndex(model->index(0, 0));
     }
@@ -725,6 +760,7 @@ void ResultsDisassemblyPage::navigateToAddressInstruction(QModelIndex index, QSt
                 selectedIndex = model->index(i, 0);
                 isScrollTo = true;
                 m_addressStack.push(index.row());
+                ui->backButton->setEnabled(true);
                 break;
             }
         }
@@ -751,6 +787,7 @@ void ResultsDisassemblyPage::jumpToAsmCallee(QModelIndex index) {
 
         m_addressStack.clear();
         ui->asmView->scrollTo(model->index(0, 0));
+        ui->backButton->setEnabled(true);
     } else if (asmLine.contains(opCodeReturn) && !m_callStack.isEmpty()) {
         returnToCaller();
     } else {
@@ -771,6 +808,7 @@ void ResultsDisassemblyPage::returnToJump() {
         ui->asmView->setCurrentIndex(jumpIndex);
         ui->asmView->scrollTo(jumpIndex);
     }
+    blockBackButton();
 }
 
 /**
@@ -787,6 +825,18 @@ void ResultsDisassemblyPage::returnToCaller() {
         ui->asmView->scrollTo(model->index(callerIndex, 0));    
 
         m_addressStack.clear();
+    }
+    blockBackButton();
+}
+
+/**
+ *  Back button click slot to Return to Jump or Return to Caller
+ */
+void ResultsDisassemblyPage::backButtonClicked() {
+    if (!m_addressStack.isEmpty()) {
+        returnToJump();
+    } else if (!m_callStack.isEmpty()) {
+        returnToCaller();
     }
 }
 
@@ -857,19 +907,6 @@ void ResultsDisassemblyPage::setupDisassemblyContextMenu(QTreeView *view, int or
         QObject::connect(zoomOutAction, &QAction::triggered, &contextMenu, [view, origFontSize]() {
             ResultsUtil::zoomFont(view, origFontSize, -4);
         });
-
-        if (!m_callStack.isEmpty()) {
-            auto *returnToCallerAction = contextMenu.addAction(QLatin1String("Return to Caller"));
-            QObject::connect(returnToCallerAction, &QAction::triggered, &contextMenu, [this]() {
-                this->returnToCaller();
-            });
-        }
-        if (!m_addressStack.isEmpty()) {
-            auto *returnToJumpAction = contextMenu.addAction(QLatin1String("Return to Jump"));
-            QObject::connect(returnToJumpAction, &QAction::triggered, &contextMenu, [this]() {
-                this->returnToJump();
-            });
-        }
         contextMenu.exec(QCursor::pos());
     });
 }

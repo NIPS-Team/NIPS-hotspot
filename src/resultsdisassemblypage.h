@@ -73,10 +73,14 @@ public:
     void navigateToAddressInstruction(QModelIndex index, QString asmLine);
     void resizeEvent(QResizeEvent *event);
     void clearDisasmMethodState();
+    int selectedRow();
+    void selectRow(int row);
 signals:
     void doubleClicked(QModelIndex);
 public slots:
     void jumpToAsmCallee(QModelIndex);
+    void backButtonClicked();
+    void blockBackButton();
 
 private:
     FilterAndZoomStack* m_filterAndZoomStack;
