@@ -31,7 +31,7 @@
 #include <QTextEdit>
 #include <QShortcut>
 
-ResultsDisassemblyPage::ResultsDisassemblyPage(FilterAndZoomStack *filterStack, PerfParser *parser, QWidget *parent)
+ResultsDisassemblyPage::ResultsDisassemblyPage(FilterAndZoomStack *filterStack, QWidget *parent)
         : QWidget(parent), ui(new Ui::ResultsDisassemblyPage), m_noShowRawInsn(true), m_noShowAddress(false) {
     ui->setupUi(this);
 
@@ -887,14 +887,13 @@ void ResultsDisassemblyPage::setupDisassemblyContextMenu(QTreeView *view, int or
         ResultsUtil::copySelectedDisassembly(view);
     });
 
-    QObject::connect(view, &QTreeView::customContextMenuRequested, view, [view, origFontSize, this](const QPoint &point) {
+    QObject::connect(view, &QTreeView::customContextMenuRequested, view, [view, origFontSize, this]() {
         QMenu contextMenu;
         auto *copyAction = contextMenu.addAction(QLatin1String("Copy"));
         auto *exportToCSVAction = contextMenu.addAction(QLatin1String("Export to CSV..."));
         auto *zoomInAction = contextMenu.addAction(QLatin1String("Zoom In"));
         auto *zoomOutAction = contextMenu.addAction(QLatin1String("Zoom Out"));
 
-        const auto index = view->indexAt(point);
         QObject::connect(copyAction, &QAction::triggered, &contextMenu, [view]() {
             ResultsUtil::copySelectedDisassembly(view);
         });
@@ -907,6 +906,13 @@ void ResultsDisassemblyPage::setupDisassemblyContextMenu(QTreeView *view, int or
         QObject::connect(zoomOutAction, &QAction::triggered, &contextMenu, [view, origFontSize]() {
             ResultsUtil::zoomFont(view, origFontSize, -4);
         });
+
+        if (!m_callStack.isEmpty()) {
+            auto *returnToCallerAction = contextMenu.addAction(QLatin1String("Return to Caller"));
+            QObject::connect(returnToCallerAction, &QAction::triggered, &contextMenu, [this]() {
+                this->returnToCaller();
+            });
+        }
         contextMenu.exec(QCursor::pos());
     });
 }

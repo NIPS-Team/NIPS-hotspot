@@ -71,7 +71,7 @@ void Highlighter::highlightBlock(const QString &text) {
     if (!m_diagnosticStyle) {
         QString commentSymbol = m_arch.startsWith(QLatin1String("arm")) ? QLatin1String(";") : QLatin1String("#");
         if (m_arch.startsWith(QLatin1String("armv8"))) {
-            commentSymbol = QLatin1String("\/\/");
+            commentSymbol = QLatin1String("//");
         }
         commentFormat.setForeground(Qt::gray);
         const QString commentPatterns[] = {

@@ -36,8 +36,7 @@ public:
         Annotate
     };
 
-    explicit ResultsDisassemblyPage(FilterAndZoomStack* filterStack, PerfParser* parser,
-                                 QWidget* parent = nullptr);
+    explicit ResultsDisassemblyPage(FilterAndZoomStack* filterStack, QWidget* parent = nullptr);
     ~ResultsDisassemblyPage();
 
     void clear();
@@ -60,7 +59,7 @@ public:
     void setData(const Data::DisassemblyResult& data);
     void resetCallStack();
     void zoomFont(QWheelEvent *event);
-    void wheelEvent(QWheelEvent *event);
+    void wheelEvent(QWheelEvent *event) override;
     void getObjdumpVersion();
     void searchTextAndHighlight();
     QByteArray processPerfAnnotateDiag(QString processName);
@@ -71,7 +70,7 @@ public:
     void setOpcodes(bool intelSyntax);
     void setAction(bool disasmMethod);
     void navigateToAddressInstruction(QModelIndex index, QString asmLine);
-    void resizeEvent(QResizeEvent *event);
+    void resizeEvent(QResizeEvent *event) override;
     void clearDisasmMethodState();
     int selectedRow();
     void selectRow(int row);
