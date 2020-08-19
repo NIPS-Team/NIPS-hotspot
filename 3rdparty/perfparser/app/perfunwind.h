@@ -163,6 +163,7 @@ public:
                bool printStats = false, bool branchTraverse = false);
     ~PerfUnwind();
 
+    quint64 map_ip(quint64 ip);
     QString kallsymsPath() const { return m_kallsymsPath; }
     void setKallsymsPath(const QString &kallsymsPath) { m_kallsymsPath = kallsymsPath; }
 
@@ -289,6 +290,7 @@ private:
 
     QList<PerfRecordSample> m_sampleBuffer;
     QList<PerfRecordMmap> m_mmapBuffer;
+    QList<PerfRecordMmap> m_mmapBufferCache;
     struct TaskEvent
     {
         qint32 m_pid;

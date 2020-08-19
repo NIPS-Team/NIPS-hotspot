@@ -53,6 +53,8 @@
 PerfSymbolTable::PerfSymbolTable(qint32 pid, Dwfl_Callbacks *callbacks, PerfUnwind *parent) :
     m_perfMapFile(QDir::tempPath() + QDir::separator()
                   + QString::fromLatin1("perf-%1.map").arg(pid)),
+    m_perfCacheFile(QDir::tempPath() + QDir::separator()
+                  + QString::fromLatin1("perf-%1.cache").arg(pid)),
     m_cacheIsDirty(false),
     m_unwind(parent),
     m_callbacks(callbacks),
@@ -926,35 +928,49 @@ int PerfSymbolTable::lookupFrame(Dwarf_Addr ip, bool isKernel,
     quint64 size = 0;
     GElf_Off adjust = 0;
     if (mod) {
-        auto cachedAddrInfo = addressCache->findSymbol(elf, addressLocation.address);
-        if (cachedAddrInfo.isValid()) {
-            off = addressLocation.address - elf.addr - cachedAddrInfo.offset;
-            symname = cachedAddrInfo.symname;
-            offset = cachedAddrInfo.value;
-            size = cachedAddrInfo.size;
+        quint64 rip = m_unwind->map_ip(addressLocation.address);
+        auto it = std::lower_bound(m_perfCache.begin(), m_perfCache.end(), rip);
+        if (it != m_perfCache.end() && it->ip == rip) {
+            offset = it->start;
+            symname = it->name;
+            size = it->length;
+            off = it->off;
         } else {
-            Elf *elfp;
-            GElf_Word shndx;
-            GElf_Sym sym;
-            // For addrinfo we need the raw pointer into symtab, so we need to adjust ourselves.
-            symname = dwfl_module_addrinfo(mod, addressLocation.address, &off, &sym, &shndx, &elfp,
-                                           nullptr);
-            if (off != addressLocation.address) {
-                GElf_Ehdr ehdr;
-                gelf_getehdr (elfp, &ehdr);
-                //For relocated modules the adjustment (value of 'off' argument) is section relative.
-                if (ehdr.e_type == ET_REL) {
-                    Elf_Scn *refscn = elf_getscn (elfp, shndx);
-                    GElf_Shdr refshdr_mem, *refshdr = gelf_getshdr (refscn, &refshdr_mem);
-                    adjust = refshdr->sh_addr - elfStart;
-                    off += adjust;
+            auto cachedAddrInfo = addressCache->findSymbol(elf, addressLocation.address);
+            if (cachedAddrInfo.isValid()) {
+                off = addressLocation.address - elf.addr - cachedAddrInfo.offset;
+                symname = cachedAddrInfo.symname;
+                offset = cachedAddrInfo.value;
+                size = cachedAddrInfo.size;
+            } else {
+                Elf *elfp;
+                GElf_Word shndx;
+                GElf_Sym sym;
+                // For addrinfo we need the raw pointer into symtab, so we need to adjust ourselves.
+                symname = dwfl_module_addrinfo(mod, addressLocation.address, &off, &sym, &shndx, &elfp,
+                                               nullptr);
+                if (off != addressLocation.address) {
+                    GElf_Ehdr ehdr;
+                    gelf_getehdr(elfp, &ehdr);
+                    //For relocated modules the adjustment (value of 'off' argument) is section relative.
+                    if (ehdr.e_type == ET_REL) {
+                        Elf_Scn *refscn = elf_getscn(elfp, shndx);
+                        GElf_Shdr refshdr_mem, *refshdr = gelf_getshdr(refscn, &refshdr_mem);
+                        adjust = refshdr->sh_addr - elfStart;
+                        off += adjust;
+                    }
+
+                    offset = sym.st_value;
+                    offset = (isArmArch && (offset & 1)) ? offset - 1 : offset;
+                    size = sym.st_size;
+
+                    addressCache->cacheSymbol(elf, addressLocation.address - off, offset, size, symname);
                 }
-
-                offset = sym.st_value;
-                offset = (isArmArch && (offset & 1)) ? offset - 1 : offset;
-                size = sym.st_size;
-
-                addressCache->cacheSymbol(elf, addressLocation.address - off, offset, size, symname);                
+            }
+            if (offset != 0) {
+                PerfCacheSymbol perfCacheSymbol = {offset, size, symname, rip, off};
+                m_perfCache.insert(it, perfCacheSymbol);
+                updatePerfCacheFile(perfCacheSymbol);
             }
         }
         // offset - relative address of the function start
@@ -1112,6 +1128,40 @@ void PerfSymbolTable::updatePerfMap()
 
     if (readLine)
         std::sort(m_perfMap.begin(), m_perfMap.end());
+}
+
+
+void PerfSymbolTable::updatePerfCache() {
+    if (!m_perfCache.isEmpty())
+        return;
+
+    if (!m_perfCacheFile.isOpen())
+        m_perfCacheFile.open(QIODevice::ReadOnly);
+
+    QTextStream stream(&m_perfCacheFile);
+    while (!stream.atEnd()) {
+        QString line = stream.readLine();
+
+        PerfCacheSymbol perfCacheSymbol;
+        QChar pad = QLatin1Char(' ');
+        stream >> perfCacheSymbol.start >> pad >> perfCacheSymbol.length >> pad >> perfCacheSymbol.name >> pad
+               >> perfCacheSymbol.ip >> pad >> perfCacheSymbol.off >> endl;
+        m_perfCache.push_back(perfCacheSymbol);
+    }
+    m_perfCacheFile.close();
+    Sorter sorter;
+    std::sort(m_perfCache.begin(), m_perfCache.end(), sorter);
+}
+
+
+void PerfSymbolTable::updatePerfCacheFile(PerfCacheSymbol perfCacheSymbol) {
+    if (!m_perfCacheFile.isOpen())
+        m_perfCacheFile.open(QIODevice::WriteOnly | QIODevice::Append);
+
+    QTextStream stream(&m_perfCacheFile);
+    QChar pad = QLatin1Char(' ');
+    stream << perfCacheSymbol.start << pad << perfCacheSymbol.length << pad << perfCacheSymbol.name << pad
+           << perfCacheSymbol.ip << pad << perfCacheSymbol.off << endl;    
 }
 
 bool PerfSymbolTable::containsAddress(quint64 address) const

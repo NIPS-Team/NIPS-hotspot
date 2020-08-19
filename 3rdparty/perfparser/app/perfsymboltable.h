@@ -42,6 +42,21 @@ public:
     PerfSymbolTable(qint32 pid, Dwfl_Callbacks *callbacks, PerfUnwind *parent);
     ~PerfSymbolTable();
 
+    struct PerfCacheSymbol {
+        PerfCacheSymbol(quint64 start = 0, quint64 length = 0, QByteArray name = QByteArray(), Dwarf_Addr ip = 0,
+                        GElf_Off off = 0) :
+                start(start), length(length), name(name), ip(ip), off(off) {}
+        quint64 start;
+        quint64 length;
+        QByteArray name;
+        Dwarf_Addr ip;
+        GElf_Off off;
+
+        bool operator<(quint64 ip) {
+            return this->ip < ip;
+        }
+    };
+
     struct PerfMapSymbol {
         PerfMapSymbol(quint64 start = 0, quint64 length = 0, QByteArray name = QByteArray()) :
             start(start), length(length), name(name) {}
@@ -50,6 +65,11 @@ public:
         QByteArray name;
     };
 
+    struct Sorter {
+        bool operator()(const PerfCacheSymbol a, const PerfCacheSymbol b) const {
+            return a.ip < b.ip;
+        }
+    };
     // Announce an mmap. Invalidate the symbol and address cache and clear the dwfl if it overlaps
     // with an existing one.
     void registerElf(const PerfRecordMmap &mmap, const QByteArray &buildId);
@@ -68,6 +88,9 @@ public:
     int lookupFrame(Dwarf_Addr ip, bool isKernel, bool *isInterworking);
 
     void updatePerfMap();
+    void updatePerfCache();
+    void updatePerfCacheFile(PerfCacheSymbol perfCacheSymbol);
+
     bool containsAddress(quint64 address) const;
 
     Dwfl *attachDwfl(void *arg);
@@ -106,6 +129,9 @@ private:
 
     QFile m_perfMapFile;
     QVector<PerfMapSymbol> m_perfMap;
+
+    QFile m_perfCacheFile;
+    QVector<PerfCacheSymbol> m_perfCache;
     bool m_cacheIsDirty;
 
     PerfUnwind *m_unwind;

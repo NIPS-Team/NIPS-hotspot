@@ -49,6 +49,16 @@ bool operator==(const PerfUnwind::Location &a, const PerfUnwind::Location &b)
             && a.column == b.column;
 }
 
+quint64 PerfUnwind::map_ip(quint64 ip) {
+    for (int i = 0; i < m_mmapBufferCache.size(); i++) {
+        PerfRecordMmap mmap = m_mmapBufferCache.at(i);
+        if (mmap.addr() <= ip && mmap.addr() + mmap.len() >= ip) {
+            return ip - mmap.addr() + mmap.pgoff();
+        }
+    }
+    return ip;
+}
+
 void PerfUnwind::Stats::addEventTime(quint64 time)
 {
     if (time && time < maxTime)
@@ -618,6 +628,7 @@ void PerfUnwind::analyze(const PerfRecordSample &sample)
         m_currentUnwind.isIncompleteCallchain = false;
 
         userSymbols->updatePerfMap();
+        userSymbols->updatePerfCache();
         if (!sample.callchain().isEmpty() || !sample.branchStack().isEmpty())
             resolveCallchain();
 
@@ -901,6 +912,7 @@ void PerfUnwind::flushEventBuffer(uint desiredBufferSize)
     std::stable_sort(m_mmapBuffer.begin(), m_mmapBuffer.end(), sortByTime<PerfRecord>);
     std::stable_sort(m_sampleBuffer.begin(), m_sampleBuffer.end(), sortByTime<PerfRecord>);
     std::stable_sort(m_taskEventsBuffer.begin(), m_taskEventsBuffer.end(), sortByTime<TaskEvent>);
+    m_mmapBufferCache.append(m_mmapBuffer);
 
     if (m_stats.enabled) {
         for (const auto &sample : m_sampleBuffer) {
