@@ -59,6 +59,14 @@ The main feature of hotspot is visualizing a `perf.data` file graphically.
 
 ![hotspot top-down page](screenshots/top-down.png?raw=true "hotspot top-down page")
 
+### Disassembly / Annotate
+
+![hotspot disassembler page](screenshots/disassembler.png?raw=true "hotspot disassembler page")
+
+### Cross-profiling settings
+
+![hotspot cross-profiling-settings page](screenshots/cross-profiling-settings.png?raw=true "hotspot cross-profiling-settings page")
+
 ### Time Line
 
 The time line allows filtering the results by time, process or thread. The data views will update accordingly.
@@ -140,7 +148,7 @@ zypper in cmake gcc-c++ extra-cmake-modules threadweaver-devel ki18n-devel kio-d
 ### Building Hotspot itself
 
 ```
-git clone --recurse-submodules https://github.com/KDAB/hotspot.git
+git clone --recurse-submodules https://github.com/NIPS-team/NIPS-hotspot.git hotspot
 mkdir build-hotspot
 cd build-hotspot
 cmake ../hotspot
@@ -150,32 +158,7 @@ make
 # or `make install` it and launch it from your $PATH
 ```
 
-If you need help building this project for your platform, [contact us for help](https://www.kdab.com/about/contact/).
-
-## Getting Hotspot
-
-*Note: Hotspot is not packaged for most Linux distributions yet -- you'll likely have to resort to using the AppImage which will work on any recent Linux distro just fine*
-
-### ArchLinux
-
-hotspot is available in AUR (https://aur.archlinux.org/packages/hotspot).
-
-### Gentoo
-
-hotspot ebuilds are available from our overlay (https://github.com/KDAB/kdab-overlay).
-
-### Fedora
-
-hotspot is available in Fedora repositories.
-
-### For any Linux distro: AppImage
-
-Head over to our [download page](https://github.com/KDAB/hotspot/releases) and download the latest [AppImage](http://appimage.org/) release and just run it.
-
-Please use the latest Continuous release to get the most recent version. If it doesn't work, please report a bug
-and test the latest stable version.
-
-*Note: Your system libraries or preferences are not altered. In case you'd like to remove Hotspot again, simply delete the downloaded file. Learn more about AppImage [here](http://appimage.org/).*
+If you need help building this project for your platform, [contact us for help](http://nips.ru/contacts) or by email [d.knysh@nips.ru](#).
 
 ## Using
 
@@ -246,7 +229,7 @@ host$ hotspot --sysroot /path/to/sysroot --kallsyms kallsyms --appPath /path/to/
 
 ## Known Issues
 
-If anything breaks in the above and the output is less usable than `perf report`, please [report an issue on GitHub](https://github.com/KDAB/hotspot/issues).
+If anything breaks in the above and the output is less usable than `perf report`, please [report an issue on GitHub](https://github.com/NIPS-Team/NIPS-hotspot/issues).
 That said, there are some known issues that people may trip over:
 
 ### Broken Backtraces
