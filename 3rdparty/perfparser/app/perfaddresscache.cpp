@@ -19,6 +19,10 @@
 
 #include "perfaddresscache.h"
 
+#include "perfdwarfdiecache.h"
+
+#include <algorithm>
+
 namespace {
 quint64 relativeAddress(const PerfElfMap::ElfInfo& elf, quint64 addr)
 {
@@ -48,17 +52,30 @@ void PerfAddressCache::cache(const PerfElfMap::ElfInfo& elf, quint64 addr,
         (*invalidAddressCache)[addr] = entry;
 }
 
+static bool operator<(const PerfAddressCache::SymbolCacheEntry &lhs, const PerfAddressCache::SymbolCacheEntry &rhs)
+{
+    return lhs.offset < rhs.offset;
+}
+
+static bool operator==(const PerfAddressCache::SymbolCacheEntry &lhs, const PerfAddressCache::SymbolCacheEntry &rhs)
+{
+    return lhs.offset == rhs.offset && lhs.size == rhs.size;
+}
+
 static bool operator<(const PerfAddressCache::SymbolCacheEntry &lhs, quint64 addr)
 {
     return lhs.offset < addr;
 }
 
-PerfAddressCache::SymbolCacheEntry PerfAddressCache::findSymbol(const PerfElfMap::ElfInfo& elf,
-                                                                quint64 addr) const
+
+bool PerfAddressCache::hasSymbolCache(const QByteArray &filePath) const
 {
-    Q_ASSERT(elf.isValid());
-    const auto &symbols = m_symbolCache.value(elf.originalPath);
-    const auto relAddr = relativeAddress(elf, addr);
+    return m_symbolCache.contains(filePath);
+}
+
+PerfAddressCache::SymbolCacheEntry PerfAddressCache::findSymbol(const QByteArray& filePath, quint64 relAddr)
+{
+    auto &symbols = m_symbolCache[filePath];
     auto it = std::lower_bound(symbols.begin(), symbols.end(), relAddr);
 
     if (it != symbols.end() && it->offset == relAddr)
@@ -68,17 +85,26 @@ PerfAddressCache::SymbolCacheEntry PerfAddressCache::findSymbol(const PerfElfMap
 
     --it;
 
-    if (it->offset <= relAddr && it->offset + it->size > relAddr)
+    if (it->offset <= relAddr && (it->offset + it->size > relAddr || (it->size == 0)))
         return *it;
     return {};
 }
 
-void PerfAddressCache::cacheSymbol(const PerfElfMap::ElfInfo& elf, quint64 startAddr, quint64 value, quint64 size,
-                                   const QByteArray& symname)
+void PerfAddressCache::setSymbolCache(const QByteArray &filePath, SymbolCache cache)
 {
-    Q_ASSERT(elf.isValid());
-    auto &symbols = m_symbolCache[elf.originalPath];
-    const auto offset = relativeAddress(elf, startAddr);
-    auto it = std::lower_bound(symbols.begin(), symbols.end(), offset);
-    symbols.insert(it, {offset, value, size, symname});
+    /*
+     * use stable_sort to produce results that are comparable to what addr2line would
+     * return when we have entries like this in the symtab:
+     *
+     * 000000000045a130 l     F .text  0000000000000033 .hidden __memmove_avx_unaligned
+     * 000000000045a180 l     F .text  00000000000003d8 .hidden __memmove_avx_unaligned_erms
+     * 000000000045a180 l     F .text  00000000000003d8 .hidden __memcpy_avx_unaligned_erms
+     * 000000000045a130 l     F .text  0000000000000033 .hidden __memcpy_avx_unaligned
+     *
+     * here, addr2line would always find the first entry. we want to do the same
+     */
+
+    std::stable_sort(cache.begin(), cache.end());
+    cache.erase(std::unique(cache.begin(), cache.end()), cache.end());
+    m_symbolCache[filePath] = cache;
 }

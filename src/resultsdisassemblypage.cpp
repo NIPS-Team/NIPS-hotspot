@@ -32,7 +32,7 @@
 #include <QShortcut>
 
 ResultsDisassemblyPage::ResultsDisassemblyPage(FilterAndZoomStack *filterStack, QWidget *parent)
-        : QWidget(parent), ui(new Ui::ResultsDisassemblyPage), m_noShowRawInsn(true), m_noShowAddress(false) {
+        : QWidget(parent), ui(new Ui::ResultsDisassemblyPage), m_noShowRawInsn(true), m_noShowAddress(false), m_intelSyntaxDisassembly(false) {
     ui->setupUi(this);
 
     ui->searchTextEdit->setPlaceholderText(QLatin1String("Search"));

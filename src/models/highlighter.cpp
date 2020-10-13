@@ -35,9 +35,8 @@ Highlighter::Highlighter(QTextDocument *parent)
  * @param text
  */
 void Highlighter::highlightBlock(const QString &text) {
-    QStringList textTokens = text.trimmed().split(QLatin1String(","));
+    QStringList argList = text.trimmed().split(QLatin1String(","));
     QStringList arg1, arg2;
-    QStringList argList;
     QList<int> offsetList;
     QStringList argListFirst;
 
@@ -94,7 +93,6 @@ void Highlighter::highlightBlock(const QString &text) {
             }
         }
 
-        argList = textTokens;
         argListFirst = argList[0].trimmed().split(QRegExp(QLatin1String("[a-z]+\\s")));
 
         if (argListFirst.size() > 1) {

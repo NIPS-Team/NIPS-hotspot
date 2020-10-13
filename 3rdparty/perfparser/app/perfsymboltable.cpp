@@ -722,6 +722,42 @@ static QByteArray fakeSymbolFromSection(Dwfl_Module *mod, Dwarf_Addr addr)
     return sym;
 }
 
+static quint64 relocatedAdjust(Elf *elfp, GElf_Word shndx, quint64 elfStart)
+{
+    // Check if the module is relocated
+    GElf_Ehdr ehdr;
+    gelf_getehdr (elfp, &ehdr);
+    if (ehdr.e_type == ET_REL) {
+        Elf_Scn *refscn = elf_getscn (elfp, shndx);
+        GElf_Shdr refshdr_mem, *refshdr = gelf_getshdr (refscn, &refshdr_mem);
+        if (refshdr != nullptr)
+            return refshdr->sh_addr - elfStart;
+    }
+    return 0;
+}
+
+static PerfAddressCache::SymbolCache cacheSymbols(Dwfl_Module *module, quint64 elfStart, bool isArmArch)
+{
+    PerfAddressCache::SymbolCache cache;
+
+    const auto numSymbols = dwfl_module_getsymtab(module);
+    for (int i = 0; i < numSymbols; ++i) {
+        GElf_Sym sym;
+        GElf_Addr symAddr;
+        Elf *elfp;
+        GElf_Word shndx;
+        const auto symbol = dwfl_module_getsym_info(module, i, &sym, &symAddr, &shndx, &elfp, nullptr);
+        if (symbol) {
+            quint64 adjust = relocatedAdjust(elfp, shndx, elfStart);
+            quint64 start = sym.st_value;
+            start = (isArmArch && (start & 1)) ? start - 1 : start;
+
+            cache.append({symAddr - elfStart, start, sym.st_size, symbol, adjust});
+        }
+    }
+    return cache;
+}
+
 int PerfSymbolTable::lookupFrame(Dwarf_Addr ip, bool isKernel,
                                  bool *isInterworking)
 {
@@ -752,49 +788,25 @@ int PerfSymbolTable::lookupFrame(Dwarf_Addr ip, bool isKernel,
     QByteArray symname;
     GElf_Off off = 0;
 
-    quint64 offset = 0;
+    quint64 start = 0;
     quint64 size = 0;
-    GElf_Off adjust = 0;
     if (mod) {
-        auto cachedAddrInfo = addressCache->findSymbol(elf, addressLocation.address);
-        if (cachedAddrInfo.isValid()) {
-            off = addressLocation.address - elf.addr - cachedAddrInfo.offset;
-            symname = cachedAddrInfo.symname;
-            offset = cachedAddrInfo.value;
-            size = cachedAddrInfo.size;
-        } else {
-            Elf *elfp;
-            GElf_Word shndx;
-            GElf_Sym sym;
-            // For addrinfo we need the raw pointer into symtab, so we need to adjust ourselves.
-            symname = dwfl_module_addrinfo(mod, addressLocation.address, &off, &sym, &shndx, &elfp, nullptr);
-            if (off != addressLocation.address) {
-                GElf_Ehdr ehdr;
-                gelf_getehdr (elfp, &ehdr);
-                //For relocated modules the adjustment (value of 'off' argument) is section relative.
-                if (ehdr.e_type == ET_REL) {
-                    Elf_Scn *refscn = elf_getscn (elfp, shndx);
-                    GElf_Shdr refshdr_mem, *refshdr = gelf_getshdr (refscn, &refshdr_mem);
-                    adjust = refshdr->sh_addr - elfStart;
-                    off += adjust;
-                }
-
-                offset = sym.st_value;
-                offset = (isArmArch && (offset & 1)) ? offset - 1 : offset;
-                size = sym.st_size;
-
-                addressCache->cacheSymbol(elf, addressLocation.address - off, offset, size, symname);
-            }
+        if (!addressCache->hasSymbolCache(elf.originalPath)) {
+            // cache all symbols in a sorted lookup table and demangle them on-demand
+            // note that the symbols within the symtab aren't necessarily sorted,
+            // which makes searching repeatedly via dwfl_module_addrinfo potentially very slow
+            addressCache->setSymbolCache(elf.originalPath, cacheSymbols(mod, elfStart, isArmArch));
         }
-        // offset - relative address of the function start
-        // off - offset from the function start
-        quint64 relAddr = offset + off;
-        addressLocation.relAddr = (isArmArch && (relAddr & 1)) ? relAddr - 1 : relAddr;
 
-        if (off == addressLocation.address) {// no symbol found
-            symname = fakeSymbolFromSection(mod, addressLocation.address);
-            addressLocation.parentLocationId = m_unwind->resolveLocation(functionLocation);
-        } else {
+        auto cachedAddrInfo = addressCache->findSymbol(elf.originalPath, addressLocation.address - elfStart);
+        if (cachedAddrInfo.isValid()) {
+            off = addressLocation.address - elfStart - cachedAddrInfo.offset;
+            symname = cachedAddrInfo.symname;
+            start = cachedAddrInfo.value;
+            size = cachedAddrInfo.size;
+
+            off += cachedAddrInfo.adjust;
+
             Dwarf_Addr bias = 0;
             functionLocation.address -= off; // in case we don't find anything better
 
@@ -835,7 +847,7 @@ int PerfSymbolTable::lookupFrame(Dwarf_Addr ip, bool isKernel,
                     addressLocation.parentLocationId = m_unwind->lookupLocation(functionLocation);
                     // otherwise resolve the inline chain if possible
                     if (!scopes.isEmpty() && !m_unwind->hasSymbol(addressLocation.parentLocationId)) {
-                        functionLocation.parentLocationId = parseDwarf(cudie, subprogram, scopes, bias, offset, size,
+                        functionLocation.parentLocationId = parseDwarf(cudie, subprogram, scopes, bias, start, size,
                                                                        binaryId, binaryPathId, isKernel);
                     }
                 }
@@ -844,13 +856,17 @@ int PerfSymbolTable::lookupFrame(Dwarf_Addr ip, bool isKernel,
             // resolve and cache the inline chain
             if (addressLocation.parentLocationId == -1)
                 addressLocation.parentLocationId = m_unwind->resolveLocation(functionLocation);
+        } else {
+            // no symbol found
+            symname = fakeSymbolFromSection(mod, addressLocation.address);
+            addressLocation.parentLocationId = m_unwind->resolveLocation(functionLocation);
         }
         if (!m_unwind->hasSymbol(addressLocation.parentLocationId)) {
             // no sufficient debug information. Use what we already know
-            qint32 mangledSymId = m_unwind->resolveString(symname);
             qint32 symId = m_unwind->resolveString(demangle(symname));
+            qint32 mangledSymId = m_unwind->resolveString(symname);
             m_unwind->resolveSymbol(addressLocation.parentLocationId,
-                                    PerfUnwind::Symbol(symId, mangledSymId, offset, size, binaryId, binaryPathId, isKernel));
+                                    PerfUnwind::Symbol(symId, mangledSymId, start, size, binaryId, binaryPathId, isKernel));
         }
     } else {
         if (isKernel) {
@@ -869,12 +885,17 @@ int PerfSymbolTable::lookupFrame(Dwarf_Addr ip, bool isKernel,
             functionLocation.address = elfStart;
         addressLocation.parentLocationId = m_unwind->resolveLocation(functionLocation);
         if (!m_unwind->hasSymbol(addressLocation.parentLocationId)) {
-            qint32 mangledSymId = m_unwind->resolveString(symname);
             qint32 symId = m_unwind->resolveString(demangle(symname));
+            qint32 mangledSymId = m_unwind->resolveString(symname);
             m_unwind->resolveSymbol(addressLocation.parentLocationId,
-                                    PerfUnwind::Symbol(symId, mangledSymId, offset, size, binaryId, binaryPathId, isKernel));
+                                    PerfUnwind::Symbol(symId, mangledSymId, start, size, binaryId, binaryPathId, isKernel));
         }
     }
+
+    // start - relative address of the function start
+    // off - offset from the function start
+    quint64 relAddr = start + off;
+    addressLocation.relAddr = (isArmArch && (relAddr & 1)) ? relAddr - 1 : relAddr;
     Q_ASSERT(addressLocation.parentLocationId != -1);
     Q_ASSERT(m_unwind->hasSymbol(addressLocation.parentLocationId));
 
